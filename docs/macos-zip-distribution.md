@@ -11,7 +11,7 @@ Este documento define o primeiro modo de distribuição pública do Zealot Clien
 - Versão mínima do macOS: 11.0.
 - Formato publicado: arquivo ZIP contendo `Zealot Client.app`.
 - Canal de download: página oficial `https://www.zealot.website/download`.
-- Sistema mínimo: macOS 11.0.
+- Sistema mínimo: macOS 13.3.
 
 O ZIP inicial não será assinado nem notarizado, pois a inscrição no Apple Developer Program foi adiada. Por isso, o macOS poderá impedir a primeira abertura. A página de download deve explicar o procedimento de autorização pelo usuário em **Ajustes do Sistema > Privacidade e Segurança**.
 

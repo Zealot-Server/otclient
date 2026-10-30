@@ -120,7 +120,7 @@ jobs:
             -DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake \
             -DVCPKG_TARGET_TRIPLET="${VCPKG_TARGET_TRIPLET}" \
             -DCMAKE_OSX_ARCHITECTURES="${MACOS_ARCHITECTURE}" \
-            -DCMAKE_OSX_DEPLOYMENT_TARGET="11.0" \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET="13.3" \
             -DTOGGLE_BIN_FOLDER=ON \
             -DOPTIONS_ENABLE_IPO=OFF \
             -DCMAKE_CXX_FLAGS_RELEASE="-O2 -DNDEBUG" \
