@@ -32,8 +32,8 @@ jobs:
             triplet: arm64-osx
             buildtype: macos-release
             cmake_build_type: Release
-          # macOS 13 is an Intel runner, producing a native x86_64 bundle.
-          - os: macos-13
+          # GitHub's supported Intel image, producing a native x86_64 bundle.
+          - os: macos-15-intel
             architecture: x86_64
             triplet: x64-osx
             buildtype: macos-release
