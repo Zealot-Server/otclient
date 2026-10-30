@@ -134,7 +134,7 @@ jobs:
           BUILD_DIR: build-${{ matrix.buildtype }}
           ARCHITECTURE: ${{ matrix.architecture }}
         run: |
-          version=$(awk -F'"' '/^set\\(VERSION / { print $2; exit }' src/CMakeLists.txt)
+          version=$(awk -F'"' '/^set\(VERSION / { print $2; exit }' src/CMakeLists.txt)
           if [ -z "${version}" ]; then
             echo "::error title=Missing client version::Could not read VERSION from src/CMakeLists.txt."
             exit 1
