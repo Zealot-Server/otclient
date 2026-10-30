@@ -15,21 +15,28 @@ env:
 jobs:
   build:
     if: ${{ github.event_name == 'push' || !github.event.pull_request.draft }}
-    name: ${{ matrix.os }}-${{ matrix.buildtype }}
+    name: ${{ matrix.architecture }}-${{ matrix.buildtype }}
     runs-on: ${{ matrix.os }}
 
     concurrency:
-      group: otclient-${{ github.workflow }}-${{ github.ref }}-${{ matrix.buildtype }}
+      group: otclient-${{ github.workflow }}-${{ github.ref }}-${{ matrix.architecture }}-${{ matrix.buildtype }}
       cancel-in-progress: true
 
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-15]
-        buildtype: [macos-release]
         include:
+          # GitHub's macOS 15 image runs natively on Apple Silicon.
           - os: macos-15
+            architecture: arm64
             triplet: arm64-osx
+            buildtype: macos-release
+            cmake_build_type: Release
+          # macOS 13 is an Intel runner, producing a native x86_64 bundle.
+          - os: macos-13
+            architecture: x86_64
+            triplet: x64-osx
+            buildtype: macos-release
             cmake_build_type: Release
 
     steps:
@@ -106,11 +113,14 @@ jobs:
           BUILD_DIR: build-${{ matrix.buildtype }}
           CMAKE_BUILD_TYPE: ${{ matrix.cmake_build_type }}
           VCPKG_TARGET_TRIPLET: ${{ matrix.triplet }}
+          MACOS_ARCHITECTURE: ${{ matrix.architecture }}
         run: |
           cmake -G Ninja -S . -B "${BUILD_DIR}" \
             -DCMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE}" \
             -DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake \
             -DVCPKG_TARGET_TRIPLET="${VCPKG_TARGET_TRIPLET}" \
+            -DCMAKE_OSX_ARCHITECTURES="${MACOS_ARCHITECTURE}" \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET="11.0" \
             -DTOGGLE_BIN_FOLDER=ON \
             -DOPTIONS_ENABLE_IPO=OFF \
             -DCMAKE_CXX_FLAGS_RELEASE="-O2 -DNDEBUG" \
@@ -122,16 +132,22 @@ jobs:
       - name: Create app bundle archive
         env:
           BUILD_DIR: build-${{ matrix.buildtype }}
-          ARTIFACT_NAME: otclient-${{ matrix.os }}-${{ matrix.buildtype }}
+          ARCHITECTURE: ${{ matrix.architecture }}
         run: |
+          version=$(awk -F'"' '/^set\\(VERSION / { print $2; exit }' src/CMakeLists.txt)
+          if [ -z "${version}" ]; then
+            echo "::error title=Missing client version::Could not read VERSION from src/CMakeLists.txt."
+            exit 1
+          fi
+          artifact_name="zealot-client-${version}-macos-${ARCHITECTURE}"
           cd "${BUILD_DIR}/bin"
-          xattr -cr OTClient.app
-          codesign --force --deep --sign - OTClient.app
-          ditto -c -k --keepParent OTClient.app "${ARTIFACT_NAME}.zip"
+          xattr -cr "Zealot Client.app"
+          codesign --force --deep --sign - "Zealot Client.app"
+          ditto -c -k --keepParent "Zealot Client.app" "${artifact_name}.zip"
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: otclient-${{ matrix.os }}-${{ matrix.buildtype }}-${{ github.sha }}
-          path: build-${{ matrix.buildtype }}/bin/otclient-${{ matrix.os }}-${{ matrix.buildtype }}.zip
+          name: zealot-client-macos-${{ matrix.architecture }}-${{ github.sha }}
+          path: build-${{ matrix.buildtype }}/bin/zealot-client-*-macos-${{ matrix.architecture }}.zip
           if-no-files-found: error

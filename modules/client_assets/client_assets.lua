@@ -2,7 +2,7 @@ ClientAssets = {}
 
 local DEFAULT_CONFIG = {
   enabled = true,
-  repository = 'dudantas/tibia-client',
+  repository = 'Zealot-Server/tibia-client',
   rawBaseUrl = 'https://raw.githubusercontent.com/%s/%s/',
   installSounds = true,
   timeout = 30,

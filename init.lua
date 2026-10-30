@@ -4,13 +4,15 @@
 -- updater
 Services = {
     --updater = "http://localhost/api/updater.php", --./updater
-    status = "http://127.0.0.1:8088/login.php", --./client_entergame | ./client_topmenu
+    -- Produção: o login HTTP entrega ao cliente o mundo game.zealot.website:7172.
+    status = "https://api.zealot.website/login", --./client_entergame | ./client_topmenu
     --websites = "http://localhost/?subtopic=accountmanagement", --./client_entergame "Forgot password and/or email"
     --createAccount = "http://localhost/clientcreateaccount.php", --./client_entergame -- createAccount.lua
-    --getCoinsUrl = "http://localhost/?subtopic=shop&step=terms", --./game_market
+    getCoinsUrl = "https://www.zealot.website/?subtopic=donate&type=coins", -- ./game_market | ./client_entergame
     clientAssets = {
         enabled = true,
-        repository = "dudantas/tibia-client",
+        -- Os assets publicados pertencem ao espelho controlado pela Zealot.
+        repository = "Zealot-Server/tibia-client",
         installSounds = true,
         strictManifestSha256 = true,
         allowRawFallbackHashMismatch = false,
@@ -61,36 +63,22 @@ if ENABLE_SERVERS then
     --
     Servers_init = {
 
-        -- Local login server
+        -- Zealot production login server
         ---
-        -- Configuration for local login server.
+        -- Configuration for the public production login server.
         -- @class table
-        -- @name local_login
+        -- @name zealot_production
         -- @field port Port used for HTTP connection
         -- @field protocol Protocol identifier used by the application
         -- @field httpLogin Enables HTTP-based login on the server
         -- @field useAuthenticator Enables additional authentication layer
         --
-        ["127.0.0.1"] = {
-            port = 8088,
+        ["https://api.zealot.website/login"] = {
+            port = 443,
             protocol = 1511,
-            httpLogin = true,
+            -- false seleciona HTTPS neste cliente; true usa HTTP puro.
+            httpLogin = false,
             useAuthenticator = false
-        },
-
-        -- External server
-        ---
-        -- Configuration for external server ip.net.
-        -- @class table
-        -- @name ip_net
-        -- @field port TCP port used for connection
-        -- @field protocol Protocol identifier used by the server
-        -- @field httpLogin Indicates if the server allows HTTP login
-        --
-        ["ip.net"] = {
-            port = 7171,
-            protocol = 860,
-            httpLogin = false
         }
     }
 end
