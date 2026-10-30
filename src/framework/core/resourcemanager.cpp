@@ -220,6 +220,11 @@ bool ResourceManager::discoverWorkDir(const std::string& existentFile)
     // search for modules directory
     std::string possiblePaths[] = { g_platform.getCurrentDir(),
                                     g_resources.getBaseDir(),
+#if defined(__APPLE__)
+                                    // Release bundles keep the Lua runtime and game resources
+                                    // in the standard macOS Resources directory.
+                                    (m_binaryPath.parent_path().parent_path() / "Resources").string(),
+#endif
                                     g_resources.getBaseDir() + "/game_data/",
                                     g_resources.getBaseDir() + "../",
                                     g_resources.getBaseDir() + "../share/" + g_app.getCompactName() + "/",

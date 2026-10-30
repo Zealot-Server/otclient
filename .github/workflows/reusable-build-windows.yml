@@ -174,6 +174,40 @@ jobs:
           name: ${{ matrix.artifact }}
           path: build/windows-release/bin/
 
+      - name: Create portable Windows archive
+        if: matrix.type == 'CMake'
+        shell: pwsh
+        run: |
+          $version = (Select-String -Path src/CMakeLists.txt -Pattern '^set\(VERSION "([^"]+)"' | Select-Object -First 1).Matches.Groups[1].Value
+          if (-not $version) { throw 'Could not read the client version.' }
+
+          $executable = Get-ChildItem -Path build/windows-release/bin -Filter '*.exe' -File | Select-Object -First 1
+          if (-not $executable) { throw 'No Windows client executable was produced.' }
+
+          $packageRoot = Join-Path 'release' 'Zealot Client'
+          New-Item -ItemType Directory -Force -Path $packageRoot | Out-Null
+          Copy-Item -Path $executable.FullName -Destination (Join-Path $packageRoot 'Zealot Client.exe')
+          Copy-Item -Recurse -Force data, modules, mods -Destination $packageRoot
+          Copy-Item -Force init.lua, otclientrc.lua, config.ini, cacert.pem -Destination $packageRoot
+
+          $archive = Join-Path 'release' "zealot-client-$version-windows-x86_64.zip"
+          if (Test-Path $archive) { Remove-Item -Force $archive }
+          Compress-Archive -Path $packageRoot -DestinationPath $archive -CompressionLevel Optimal
+
+          $verificationDir = Join-Path $env:RUNNER_TEMP 'zealot-windows-package'
+          Expand-Archive -Path $archive -DestinationPath $verificationDir
+          if (-not (Test-Path (Join-Path $verificationDir 'Zealot Client/init.lua'))) { throw 'Package is missing init.lua.' }
+          if (-not (Test-Path (Join-Path $verificationDir 'Zealot Client/modules'))) { throw 'Package is missing modules.' }
+          if (-not (Test-Path (Join-Path $verificationDir 'Zealot Client/Zealot Client.exe'))) { throw 'Package is missing the executable.' }
+
+      - name: Upload portable Windows archive
+        if: matrix.type == 'CMake'
+        uses: actions/upload-artifact@v4
+        with:
+          name: zealot-client-windows-x86_64-${{ github.sha }}
+          path: release/zealot-client-*-windows-x86_64.zip
+          if-no-files-found: error
+
       - name: Build project (MSBuild solution)
         if: matrix.type == 'Solution'
         shell: pwsh

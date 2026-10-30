@@ -139,9 +139,26 @@ jobs:
           fi
           artifact_name="zealot-client-${version}-macos-${ARCHITECTURE}"
           cd "${BUILD_DIR}/bin"
+          runtime_dir="Zealot Client.app/Contents/Resources"
+          mkdir -p "${runtime_dir}"
+          cp -R ../../../data ../../../modules ../../../mods "${runtime_dir}/"
+          cp ../../../init.lua ../../../otclientrc.lua ../../../config.ini ../../../cacert.pem "${runtime_dir}/"
+          test -f "${runtime_dir}/init.lua"
+          test -d "${runtime_dir}/modules"
           xattr -cr "Zealot Client.app"
           codesign --force --deep --sign - "Zealot Client.app"
           ditto -c -k --keepParent "Zealot Client.app" "${artifact_name}.zip"
+
+      - name: Verify macOS package runtime
+        env:
+          BUILD_DIR: build-${{ matrix.buildtype }}-${{ matrix.architecture }}
+          ARCHITECTURE: ${{ matrix.architecture }}
+        run: |
+          set -euo pipefail
+          archive=$(find "${BUILD_DIR}/bin" -maxdepth 1 -name "zealot-client-*-macos-${ARCHITECTURE}.zip" -print -quit)
+          test -n "${archive}"
+          unzip -l "${archive}" | grep -q 'Zealot Client.app/Contents/Resources/init.lua'
+          unzip -l "${archive}" | grep -q 'Zealot Client.app/Contents/Resources/modules/'
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
