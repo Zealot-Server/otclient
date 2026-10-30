@@ -132,27 +132,34 @@ jobs:
           test -n "${executable}"
 
           package_name="zealot-client-${version}-linux-x86_64"
-          package_root="release/${package_name}"
-          mkdir -p "${package_root}"
-          cp "${executable}" "${package_root}/zealot-client"
-          cp -R data modules mods "${package_root}/"
-          cp init.lua otclientrc.lua config.ini cacert.pem "${package_root}/"
-          cat > "${package_root}/run-zealot-client.sh" <<'EOF'
+          mkdir -p release
+          launcher="release/run-zealot-client.sh"
+          cat > "${launcher}" <<'EOF'
           #!/bin/sh
           set -eu
           base_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
           cd "${base_dir}"
           exec "${base_dir}/zealot-client" "$@"
           EOF
-          chmod +x "${package_root}/zealot-client" "${package_root}/run-zealot-client.sh"
+          chmod +x "${launcher}"
 
-          ldd "${package_root}/zealot-client"
-          if [[ -n "${VCPKG_ROOT:-}" ]] && ldd "${package_root}/zealot-client" | grep -Fq "${VCPKG_ROOT}"; then
+          ldd "${executable}"
+          if [[ -n "${VCPKG_ROOT:-}" ]] && ldd "${executable}" | grep -Fq "${VCPKG_ROOT}"; then
             echo "Client still depends on a build-only vcpkg path." >&2
             exit 1
           fi
 
-          tar -C release -czf "release/${package_name}.tar.gz" "${package_name}"
+          tar -czf "release/${package_name}.tar.gz" \
+            --transform="s|^${executable}$|${package_name}/zealot-client|" \
+            --transform="s|^data/|${package_name}/data/|" \
+            --transform="s|^modules/|${package_name}/modules/|" \
+            --transform="s|^mods/|${package_name}/mods/|" \
+            --transform="s|^init.lua$|${package_name}/init.lua|" \
+            --transform="s|^otclientrc.lua$|${package_name}/otclientrc.lua|" \
+            --transform="s|^config.ini$|${package_name}/config.ini|" \
+            --transform="s|^cacert.pem$|${package_name}/cacert.pem|" \
+            --transform="s|^${launcher}$|${package_name}/run-zealot-client.sh|" \
+            "${executable}" data modules mods init.lua otclientrc.lua config.ini cacert.pem "${launcher}"
           tar -tzf "release/${package_name}.tar.gz" | grep -q "${package_name}/init.lua"
           tar -tzf "release/${package_name}.tar.gz" | grep -q "${package_name}/modules/"
           tar -tzf "release/${package_name}.tar.gz" | grep -q "${package_name}/run-zealot-client.sh"
