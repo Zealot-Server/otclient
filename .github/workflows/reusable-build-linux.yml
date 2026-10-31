@@ -160,9 +160,12 @@ jobs:
             --transform="s|^cacert.pem$|${package_name}/cacert.pem|" \
             --transform="s|^${launcher}$|${package_name}/run-zealot-client.sh|" \
             "${executable}" data modules mods init.lua otclientrc.lua config.ini cacert.pem "${launcher}"
-          tar -tzf "release/${package_name}.tar.gz" | grep -q "${package_name}/init.lua"
-          tar -tzf "release/${package_name}.tar.gz" | grep -q "${package_name}/modules/"
-          tar -tzf "release/${package_name}.tar.gz" | grep -q "${package_name}/run-zealot-client.sh"
+          archive_contents="release/${package_name}.contents"
+          tar -tzf "release/${package_name}.tar.gz" > "${archive_contents}"
+          grep -Fqx "${package_name}/init.lua" "${archive_contents}"
+          grep -Fq "${package_name}/modules/" "${archive_contents}"
+          grep -Fqx "${package_name}/run-zealot-client.sh" "${archive_contents}"
+          rm -f "${archive_contents}"
 
       - name: Upload portable Linux archive
         if: matrix.buildtype == 'linux-release'
