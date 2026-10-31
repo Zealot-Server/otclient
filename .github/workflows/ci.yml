@@ -342,6 +342,16 @@ jobs:
           wait "${xvfb_pid}" 2>/dev/null || true
           exit "${status}"
 
+      - name: Install software OpenGL for headless Windows runner
+        if: matrix.archive == 'windows'
+        shell: pwsh
+        run: |
+          & 'C:\msys64\usr\bin\bash.exe' -lc 'pacman -Sy --noconfirm mingw-w64-ucrt-x86_64-mesa'
+          if ($LASTEXITCODE -ne 0) { throw "MSYS2 Mesa installation failed with code $LASTEXITCODE" }
+          foreach ($file in @('opengl32.dll', 'libgallium_wgl.dll')) {
+            if (!(Test-Path "C:\msys64\ucrt64\bin\$file")) { throw "Mesa is missing $file" }
+          }
+
       - name: Smoke test Windows release login
         if: matrix.archive == 'windows'
         shell: pwsh
@@ -356,6 +366,10 @@ jobs:
           Expand-Archive -Path $archive.FullName -DestinationPath client-runtime
           $runtimeRoot = Join-Path (Get-Location) 'client-runtime/Zealot Client'
           Copy-Item -Path windows-symbols/otclient.pdb -Destination (Join-Path $runtimeRoot 'otclient.pdb')
+          Copy-Item 'C:\msys64\ucrt64\bin\opengl32.dll' -Destination $runtimeRoot
+          Copy-Item 'C:\msys64\ucrt64\bin\libgallium_wgl.dll' -Destination $runtimeRoot
+          $env:PATH = "C:\msys64\ucrt64\bin;$env:PATH"
+          $env:GALLIUM_DRIVER = 'llvmpipe'
           python tools/e2e/prepare_client_smoke.py --runtime-root $runtimeRoot
           $client = Start-Process -FilePath (Join-Path $runtimeRoot 'Zealot Client.exe') -WorkingDirectory $runtimeRoot -PassThru -RedirectStandardOutput (Join-Path $runtimeRoot 'client-e2e.stdout.log') -RedirectStandardError (Join-Path $runtimeRoot 'client-e2e.stderr.log')
           try {
