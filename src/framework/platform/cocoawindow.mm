@@ -258,6 +258,20 @@ void CocoaWindow::internalCreateGLContext()
 
     NSOpenGLPixelFormat* pixelFormat = [[NSOpenGLPixelFormat alloc] initWithAttributes:attrs];
     if (!pixelFormat) {
+        // Some macOS environments, including virtual displays, do not expose
+        // an accelerated OpenGL pixel format. Prefer acceleration when it is
+        // available, but retain a software fallback so the client can start.
+        NSOpenGLPixelFormatAttribute fallbackAttrs[] = {
+            NSOpenGLPFADoubleBuffer,
+            NSOpenGLPFADepthSize, 24,
+            NSOpenGLPFAStencilSize, 8,
+            NSOpenGLPFAColorSize, 32,
+            NSOpenGLPFAOpenGLProfile, NSOpenGLProfileVersionLegacy,
+            0
+        };
+        pixelFormat = [[NSOpenGLPixelFormat alloc] initWithAttributes:fallbackAttrs];
+    }
+    if (!pixelFormat) {
         g_logger.fatal("Failed to create OpenGL pixel format");
         return;
     }

@@ -296,7 +296,9 @@ jobs:
           test -n "${archive}"
           mkdir client-runtime
           tar -xzf "${archive}" -C client-runtime
-          runtime_root=$(find client-runtime -mindepth 1 -maxdepth 1 -type d -print -quit)
+          init_file=$(find client-runtime -mindepth 2 -maxdepth 2 -name init.lua -type f -print -quit)
+          test -n "${init_file}"
+          runtime_root=$(dirname "${init_file}")
           python3 tools/e2e/prepare_client_smoke.py --runtime-root "${runtime_root}"
           cd "${runtime_root}"
           xvfb-run -a ./run-zealot-client.sh > client-e2e.log 2>&1 &
@@ -325,7 +327,7 @@ jobs:
           Expand-Archive -Path $archive.FullName -DestinationPath client-runtime
           $runtimeRoot = Join-Path (Get-Location) 'client-runtime/Zealot Client'
           python tools/e2e/prepare_client_smoke.py --runtime-root $runtimeRoot
-          $client = Start-Process -FilePath (Join-Path $runtimeRoot 'Zealot Client.exe') -WorkingDirectory $runtimeRoot -PassThru -RedirectStandardOutput (Join-Path $runtimeRoot 'client-e2e.log') -RedirectStandardError (Join-Path $runtimeRoot 'client-e2e.log')
+          $client = Start-Process -FilePath (Join-Path $runtimeRoot 'Zealot Client.exe') -WorkingDirectory $runtimeRoot -PassThru -RedirectStandardOutput (Join-Path $runtimeRoot 'client-e2e.stdout.log') -RedirectStandardError (Join-Path $runtimeRoot 'client-e2e.stderr.log')
           try {
             python tools/e2e/wait_for_client_smoke.py --result (Join-Path $runtimeRoot 'zealot-e2e-result.txt')
           }
@@ -378,6 +380,8 @@ jobs:
           name: client-release-e2e-${{ matrix.archive }}-${{ github.sha }}
           path: |
             client-runtime/**/client-e2e.log
+            client-runtime/**/client-e2e.stdout.log
+            client-runtime/**/client-e2e.stderr.log
             client-runtime/**/zealot-e2e-result.txt
             client-runtime/**/client-e2e-failure.png
           if-no-files-found: ignore
