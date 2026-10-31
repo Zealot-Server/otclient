@@ -399,6 +399,7 @@ jobs:
             client-runtime/**/client-e2e.stdout.log
             client-runtime/**/client-e2e.stderr.log
             client-runtime/**/client-e2e.windows-events.log
+            client-runtime/**/crashreport.log
             client-runtime/**/otclient.log
             client-runtime/**/xvfb.log
             client-runtime/**/zealot-e2e-result.txt
