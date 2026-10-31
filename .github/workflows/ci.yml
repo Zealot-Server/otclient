@@ -2,6 +2,20 @@ name: CI
 
 on:
   workflow_dispatch:
+    inputs:
+      windows_smoke_only:
+        description: Re-test an existing Windows release package without rebuilding
+        required: false
+        default: false
+        type: boolean
+      source_run_id:
+        description: CI run containing the Windows package
+        required: false
+        type: string
+      source_sha:
+        description: Commit SHA of the packaged Windows artifact
+        required: false
+        type: string
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
@@ -70,6 +84,7 @@ concurrency:
 jobs:
   changes:
     name: Detect Build Scope
+    if: ${{ !inputs.windows_smoke_only }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -165,7 +180,7 @@ jobs:
 
   checks:
     name: Fast Checks
-    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    if: (!inputs.windows_smoke_only) && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     permissions:
       contents: read
       checks: write
@@ -175,7 +190,7 @@ jobs:
 
   tests-lua:
     name: Lua Syntax
-    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    if: (!inputs.windows_smoke_only) && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     permissions:
       contents: read
     uses: ./.github/workflows/reusable-tests-lua.yml
@@ -413,3 +428,15 @@ jobs:
             client-runtime/**/zealot-e2e-result.txt
             client-runtime/**/client-e2e-failure.png
           if-no-files-found: ignore
+
+  windows-smoke-retest:
+    name: Windows package re-test without rebuild
+    if: github.event_name == 'workflow_dispatch' && inputs.windows_smoke_only
+    permissions:
+      actions: read
+      contents: read
+    uses: ./.github/workflows/release-windows-smoke.yml
+    with:
+      source_run_id: ${{ inputs.source_run_id }}
+      source_sha: ${{ inputs.source_sha }}
+    secrets: inherit
