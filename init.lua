@@ -13,6 +13,7 @@ Services = {
         enabled = true,
         -- Os assets publicados pertencem ao espelho controlado pela Zealot.
         repository = "Zealot-Server/tibia-client",
+        pinnedAssetTag = "15.11.c9d1cf",
         installSounds = true,
         strictManifestSha256 = true,
         allowRawFallbackHashMismatch = false,

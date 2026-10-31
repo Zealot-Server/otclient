@@ -81,6 +81,10 @@ If Content-Length is missing, UI may run in indeterminate mode during download a
 
 `Services.clientAssets` supports runtime behavior controls (repository, archive preference, sounds, packaged files, hash strictness, etc.). Keep secure defaults unless there is a specific compatibility reason to relax.
 
+For a verified Zealot release, `pinnedAssetTag` provides a fallback when the GitHub releases API temporarily fails or omits the tag. It still downloads from the Zealot-controlled tag and keeps strict manifest SHA-256 verification enabled. Update the tag when publishing a new supported client version.
+
+CI may call `ensureClientVersion(version, callback, true)` to accept the first-run download prompt automatically. Normal player login continues to show the confirmation dialog.
+
 ## Maintenance Checklist
 
 When changing this system, validate:

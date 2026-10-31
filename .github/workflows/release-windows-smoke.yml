@@ -1,0 +1,107 @@
+name: Windows release smoke test
+
+on:
+  workflow_call:
+    inputs:
+      source_run_id:
+        required: true
+        type: string
+      source_sha:
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      source_run_id:
+        description: CI run containing the packaged Windows client
+        required: true
+        type: string
+      source_sha:
+        description: Commit SHA used in the packaged artifact name
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  smoke:
+    name: Packaged Windows login with software OpenGL
+    runs-on: windows-2025
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+      SOURCE_RUN_ID: ${{ inputs.source_run_id }}
+      SOURCE_SHA: ${{ inputs.source_sha }}
+      ZEALOT_E2E_ACCOUNT: ${{ secrets.ZEALOT_E2E_ACCOUNT }}
+      ZEALOT_E2E_PASSWORD: ${{ secrets.ZEALOT_E2E_PASSWORD }}
+      ZEALOT_E2E_CHARACTER: ${{ secrets.ZEALOT_E2E_CHARACTER }}
+    steps:
+      - name: Checkout test scripts
+        uses: actions/checkout@v6
+
+      - name: Download previously built Windows package
+        shell: pwsh
+        run: |
+          if ($env:SOURCE_RUN_ID -notmatch '^\d+$' -or $env:SOURCE_SHA -notmatch '^[0-9a-f]{40}$') {
+            throw 'Invalid source run ID or SHA.'
+          }
+          $artifact = "zealot-client-windows-x86_64-$env:SOURCE_SHA"
+          gh run download $env:SOURCE_RUN_ID --repo $env:GITHUB_REPOSITORY --name $artifact --dir client-package
+
+      - name: Install software OpenGL for headless Windows runner
+        shell: pwsh
+        run: |
+          & 'C:\msys64\usr\bin\bash.exe' -lc 'pacman -Sy --noconfirm mingw-w64-ucrt-x86_64-mesa'
+          if ($LASTEXITCODE -ne 0) { throw "MSYS2 Mesa installation failed with code $LASTEXITCODE" }
+          foreach ($file in @('opengl32.dll', 'libgallium_wgl.dll')) {
+            if (!(Test-Path "C:\msys64\ucrt64\bin\$file")) { throw "Mesa is missing $file" }
+          }
+
+      - name: Test production login from packaged client
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $archive = Get-ChildItem -Path client-package -Filter '*-windows-x86_64.zip' -File | Select-Object -First 1
+          if ($null -eq $archive) { throw 'Windows release archive was not downloaded.' }
+          Expand-Archive -Path $archive.FullName -DestinationPath client-runtime
+          $runtimeRoot = Join-Path (Get-Location) 'client-runtime/Zealot Client'
+          Copy-Item 'C:\msys64\ucrt64\bin\opengl32.dll' -Destination $runtimeRoot
+          Copy-Item 'C:\msys64\ucrt64\bin\libgallium_wgl.dll' -Destination $runtimeRoot
+          $env:PATH = "C:\msys64\ucrt64\bin;$env:PATH"
+          $env:GALLIUM_DRIVER = 'llvmpipe'
+          python tools/e2e/prepare_client_smoke.py --runtime-root $runtimeRoot
+          $client = Start-Process -FilePath (Join-Path $runtimeRoot 'Zealot Client.exe') -WorkingDirectory $runtimeRoot -PassThru -RedirectStandardOutput (Join-Path $runtimeRoot 'client-e2e.stdout.log') -RedirectStandardError (Join-Path $runtimeRoot 'client-e2e.stderr.log')
+          try {
+            Start-Sleep -Seconds 10
+            $client.Refresh()
+            if ($client.HasExited) { throw "Client exited before smoke test completed with code $($client.ExitCode)" }
+            python tools/e2e/wait_for_client_smoke.py --result (Join-Path $runtimeRoot 'zealot-e2e-result.txt') --timeout 600
+            if ($LASTEXITCODE -ne 0) { throw "Client smoke test failed with exit code $LASTEXITCODE" }
+          }
+          catch {
+            Add-Type -AssemblyName System.Windows.Forms
+            Add-Type -AssemblyName System.Drawing
+            $bitmap = New-Object System.Drawing.Bitmap([System.Windows.Forms.Screen]::PrimaryScreen.Bounds.Width, [System.Windows.Forms.Screen]::PrimaryScreen.Bounds.Height)
+            $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
+            $graphics.CopyFromScreen(0, 0, 0, 0, $bitmap.Size)
+            $bitmap.Save((Join-Path $runtimeRoot 'client-e2e-failure.png'))
+            throw
+          }
+          finally {
+            if (!$client.HasExited) { Stop-Process -Id $client.Id -Force }
+          }
+
+      - name: Upload smoke diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-release-smoke-${{ inputs.source_sha }}
+          path: |
+            client-runtime/**/client-e2e.stdout.log
+            client-runtime/**/client-e2e.stderr.log
+            client-runtime/**/otclient.log
+            client-runtime/**/crashreport.log
+            client-runtime/**/zealot-e2e-result.txt
+            client-runtime/**/client-e2e-failure.png
+          if-no-files-found: ignore

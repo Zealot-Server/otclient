@@ -1,0 +1,10 @@
+Module
+  name: zealot_e2e
+  description: Temporary production-client smoke test module
+  author: Zealot
+  sandboxed: true
+  autoload: true
+  autoload-priority: 9998
+  scripts: [ credentials, e2e ]
+  @onLoad: init()
+  @onUnload: terminate()
