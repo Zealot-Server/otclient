@@ -281,6 +281,13 @@ jobs:
           name: zealot-client-${{ matrix.artifact }}-${{ github.sha }}
           path: client-package
 
+      - name: Download Windows debug symbols
+        if: matrix.archive == 'windows'
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-cmake-release
+          path: windows-symbols
+
       - name: Smoke test Linux release login
         if: matrix.archive == 'linux'
         shell: bash
@@ -333,6 +340,7 @@ jobs:
           if ($null -eq $archive) { throw 'Windows release archive was not downloaded.' }
           Expand-Archive -Path $archive.FullName -DestinationPath client-runtime
           $runtimeRoot = Join-Path (Get-Location) 'client-runtime/Zealot Client'
+          Copy-Item -Path windows-symbols/otclient.pdb -Destination (Join-Path $runtimeRoot 'otclient.pdb')
           python tools/e2e/prepare_client_smoke.py --runtime-root $runtimeRoot
           $client = Start-Process -FilePath (Join-Path $runtimeRoot 'Zealot Client.exe') -WorkingDirectory $runtimeRoot -PassThru -RedirectStandardOutput (Join-Path $runtimeRoot 'client-e2e.stdout.log') -RedirectStandardError (Join-Path $runtimeRoot 'client-e2e.stderr.log')
           try {

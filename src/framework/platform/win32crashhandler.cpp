@@ -125,15 +125,23 @@ void Stacktrace(LPEXCEPTION_POINTERS e, std::stringstream& ss)
         pSym->MaxNameLength = 254;
 
         if (SymGetSymFromAddr(process, sf.AddrPC.Offset, &Disp, pSym))
-            ss << fmt::format("    {}: {}({}+%#0lx) [0x%016lX]\n", count, modname, pSym->Name, Disp, sf.AddrPC.Offset);
+            ss << fmt::format("    {}: {}({}+0x{:X}) [0x{:X}]", count, modname, pSym->Name, Disp, sf.AddrPC.Offset);
         else
-            ss << fmt::format("    {}: {} [0x%016lX]\n", count, modname, sf.AddrPC.Offset);
+            ss << fmt::format("    {}: {} [0x{:X}]", count, modname, sf.AddrPC.Offset);
+
+        IMAGEHLP_LINE64 sourceLine{};
+        sourceLine.SizeOfStruct = sizeof(sourceLine);
+        DWORD lineDisplacement = 0;
+        if (SymGetLineFromAddr64(process, sf.AddrPC.Offset, &lineDisplacement, &sourceLine))
+            ss << fmt::format(" ({}:{})", sourceLine.FileName, sourceLine.LineNumber);
+        ss << '\n';
         ++count;
     }
 }
 
 LONG CALLBACK ExceptionHandler(const LPEXCEPTION_POINTERS e)
 {
+    SymSetOptions(SYMOPT_LOAD_LINES | SYMOPT_UNDNAME);
     SymInitialize(GetCurrentProcess(), nullptr, TRUE);
 
     std::string crashReport = fmt::format(
