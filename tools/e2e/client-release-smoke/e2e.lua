@@ -2,6 +2,12 @@ local finished = false
 local loginStarted = false
 local characterLoginStarted = false
 local gameCallbacks
+local stage = 'startup'
+
+local function setStage(nextStage)
+    stage = nextStage
+    g_logger.info('[zealot-e2e] stage: ' .. nextStage)
+end
 
 local function writeResult(status, detail)
     if finished then
@@ -29,10 +35,12 @@ local function selectCharacter()
         return
     end
 
+    setStage('character list received')
     local target = E2E_CREDENTIALS and E2E_CREDENTIALS.character
     for _, character in ipairs(G.characters) do
         if character.name == target then
             characterLoginStarted = true
+            setStage('connecting to game world')
             g_settings.set('last-used-character', character.name)
             g_settings.set('last-used-world', character.worldName)
             CharacterList.rebuildCharactersList()
@@ -54,12 +62,29 @@ local function beginLogin()
         return
     end
 
+    if not EnterGame or not modules.client_assets or not modules.client_assets.ensureClientVersion then
+        fail('login or asset installer module is unavailable')
+        return
+    end
+
     loginStarted = true
-    EnterGame.setAccountName(E2E_CREDENTIALS.account)
-    EnterGame.setPassword(E2E_CREDENTIALS.password)
-    EnterGame.setHttpLogin(false)
-    EnterGame.doLogin()
-    scheduleEvent(selectCharacter, 250)
+    setStage('installing verified client assets')
+    modules.client_assets.ensureClientVersion(1511, function(success, message)
+        if finished then
+            return
+        end
+        if not success then
+            fail('asset installation failed: ' .. tostring(message))
+            return
+        end
+
+        setStage('sending production login')
+        EnterGame.setAccountName(E2E_CREDENTIALS.account)
+        EnterGame.setPassword(E2E_CREDENTIALS.password)
+        EnterGame.setHttpLogin(false)
+        EnterGame.doLogin()
+        scheduleEvent(selectCharacter, 250)
+    end, true)
 end
 
 function init()
@@ -82,9 +107,9 @@ function init()
     scheduleEvent(beginLogin, 1500)
     scheduleEvent(function()
         if not finished then
-            fail('timed out waiting for production login and game connection')
+            fail('timed out during ' .. stage)
         end
-    end, 120000)
+    end, 480000)
 end
 
 function terminate()

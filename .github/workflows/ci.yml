@@ -270,7 +270,7 @@ jobs:
             artifact: macos-x86_64
             archive: macos-x86_64
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 5
+    timeout-minutes: 12
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -291,7 +291,7 @@ jobs:
         run: |
           set -euo pipefail
           sudo apt-get update
-          sudo apt-get install -y xvfb libgl1 libgl1-mesa-dri libx11-6 libxext6 libxrandr2 libxi6 libxcursor1 libxinerama1 libasound2t64 imagemagick
+          sudo apt-get install -y xvfb x11-utils libgl1 libgl1-mesa-dri libx11-6 libxext6 libxrandr2 libxi6 libxcursor1 libxinerama1 libasound2t64 imagemagick
           archive=$(find client-package -name '*-linux-x86_64.tar.gz' -print -quit)
           test -n "${archive}"
           mkdir client-runtime
@@ -301,16 +301,23 @@ jobs:
           runtime_root=$(dirname "${init_file}")
           python3 tools/e2e/prepare_client_smoke.py --runtime-root "${runtime_root}"
           cd "${runtime_root}"
-          xvfb-run -a ./run-zealot-client.sh > client-e2e.log 2>&1 &
+          export DISPLAY=:99
+          Xvfb :99 -screen 0 1280x800x24 > xvfb.log 2>&1 &
+          xvfb_pid=$!
+          sleep 2
+          xdpyinfo -display :99 >/dev/null
+          ./run-zealot-client.sh > client-e2e.log 2>&1 &
           client_pid=$!
           set +e
-          python3 "${GITHUB_WORKSPACE}/tools/e2e/wait_for_client_smoke.py" --result zealot-e2e-result.txt
+          python3 "${GITHUB_WORKSPACE}/tools/e2e/wait_for_client_smoke.py" --result zealot-e2e-result.txt --timeout 500
           status=$?
           if [ "${status}" -ne 0 ]; then
             import -window root client-e2e-failure.png || true
           fi
           kill "${client_pid}" 2>/dev/null || true
+          kill "${xvfb_pid}" 2>/dev/null || true
           wait "${client_pid}" 2>/dev/null || true
+          wait "${xvfb_pid}" 2>/dev/null || true
           exit "${status}"
 
       - name: Smoke test Windows release login
@@ -329,7 +336,11 @@ jobs:
           python tools/e2e/prepare_client_smoke.py --runtime-root $runtimeRoot
           $client = Start-Process -FilePath (Join-Path $runtimeRoot 'Zealot Client.exe') -WorkingDirectory $runtimeRoot -PassThru -RedirectStandardOutput (Join-Path $runtimeRoot 'client-e2e.stdout.log') -RedirectStandardError (Join-Path $runtimeRoot 'client-e2e.stderr.log')
           try {
-            python tools/e2e/wait_for_client_smoke.py --result (Join-Path $runtimeRoot 'zealot-e2e-result.txt')
+            Start-Sleep -Seconds 10
+            $client.Refresh()
+            if ($client.HasExited) { throw "Client exited before smoke test completed with code $($client.ExitCode)" }
+            python tools/e2e/wait_for_client_smoke.py --result (Join-Path $runtimeRoot 'zealot-e2e-result.txt') --timeout 500
+            if ($LASTEXITCODE -ne 0) { throw "Client smoke test failed with exit code $LASTEXITCODE" }
           }
           catch {
             Add-Type -AssemblyName System.Windows.Forms
@@ -364,7 +375,7 @@ jobs:
           "../MacOS/Zealot Client" > client-e2e.log 2>&1 &
           client_pid=$!
           set +e
-          python3 "${GITHUB_WORKSPACE}/tools/e2e/wait_for_client_smoke.py" --result zealot-e2e-result.txt
+          python3 "${GITHUB_WORKSPACE}/tools/e2e/wait_for_client_smoke.py" --result zealot-e2e-result.txt --timeout 500
           status=$?
           if [ "${status}" -ne 0 ]; then
             screencapture -x client-e2e-failure.png || true
@@ -382,6 +393,8 @@ jobs:
             client-runtime/**/client-e2e.log
             client-runtime/**/client-e2e.stdout.log
             client-runtime/**/client-e2e.stderr.log
+            client-runtime/**/otclient.log
+            client-runtime/**/xvfb.log
             client-runtime/**/zealot-e2e-result.txt
             client-runtime/**/client-e2e-failure.png
           if-no-files-found: ignore

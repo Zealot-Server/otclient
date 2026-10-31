@@ -1357,7 +1357,7 @@ function getInstalledClientVersions()
   return installed
 end
 
-function ensureClientVersion(version, callback)
+function ensureClientVersion(version, callback, autoConfirm)
   version = tonumber(version)
   if not version then
     return callback(false, 'Invalid client version.')
@@ -1440,8 +1440,12 @@ function ensureClientVersion(version, callback)
     callback(false, tr('Assets are required for this client version.'))
   end
 
-  promptBox = displayGeneralBox(tr('Missing Assets'), message, {
-    { text = tr('Download'), callback = startDownload },
-    { text = tr('Cancel'), callback = cancelPrompt }
-  }, startDownload, cancelPrompt)
+  if autoConfirm then
+    startDownload()
+  else
+    promptBox = displayGeneralBox(tr('Missing Assets'), message, {
+      { text = tr('Download'), callback = startDownload },
+      { text = tr('Cancel'), callback = cancelPrompt }
+    }, startDownload, cancelPrompt)
+  end
 end
