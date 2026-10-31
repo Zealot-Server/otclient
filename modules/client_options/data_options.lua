@@ -404,11 +404,11 @@ return {
         end
     },
     shadowFloorIntensity              = {
-        value = 30,
+        value = 0,
         action = function(value, options, controller, panels, extraWidgets)
             panels.graphicsEffectsPanel:recursiveGetChildById('shadowFloorIntensity'):setText(string.format(
                 'Shadow floor Intensity: %s%%', value))
-            panels.gameMapPanel:setShadowFloorIntensity(1 - (value / 100))
+            panels.gameMapPanel:setShadowFloorIntensity(value / 100)
         end
     },
     optimizeFps                       = {
