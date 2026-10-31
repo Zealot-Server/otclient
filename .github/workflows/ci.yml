@@ -96,9 +96,17 @@ jobs:
               - "tests/**"
               - "cmake/**"
               - "vc18/**"
+              - "data/**"
+              - "mods/**"
+              - "modules/**"
+              - "tools/e2e/**"
               - "vcpkg.json"
               - "CMakeLists.txt"
               - "CMakePresets.json"
+              - "init.lua"
+              - "otclientrc.lua"
+              - "cacert.pem"
+              - "config.ini"
               - ".yamllint.yaml"
               - ".reviewdog.yml"
               - ".github/workflows/ci.yml"
@@ -109,9 +117,17 @@ jobs:
             macos:
               - "src/**"
               - "cmake/**"
+              - "data/**"
+              - "mods/**"
+              - "modules/**"
+              - "tools/e2e/**"
               - "vcpkg.json"
               - "CMakeLists.txt"
               - "CMakePresets.json"
+              - "init.lua"
+              - "otclientrc.lua"
+              - "cacert.pem"
+              - "config.ini"
               - ".github/workflows/ci.yml"
               - ".github/workflows/reusable-build-macos.yml"
             android:
@@ -226,3 +242,142 @@ jobs:
       contents: read
     uses: ./.github/workflows/reusable-build-browser.yml
     secrets: inherit
+
+  release-e2e:
+    name: Release E2E - ${{ matrix.name }}
+    needs: [build-linux, build-windows, build-macos]
+    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux x86_64
+            os: ubuntu-latest
+            artifact: linux-x86_64
+            archive: linux
+          - name: Windows x86_64
+            os: windows-2025
+            artifact: windows-x86_64
+            archive: windows
+          - name: macOS Apple Silicon
+            os: macos-15
+            artifact: macos-arm64
+            archive: macos-arm64
+          - name: macOS Intel
+            os: macos-15-intel
+            artifact: macos-x86_64
+            archive: macos-x86_64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Download packaged client
+        uses: actions/download-artifact@v4
+        with:
+          name: zealot-client-${{ matrix.artifact }}-${{ github.sha }}
+          path: client-package
+
+      - name: Smoke test Linux release login
+        if: matrix.archive == 'linux'
+        shell: bash
+        env:
+          ZEALOT_E2E_ACCOUNT: ${{ secrets.ZEALOT_E2E_ACCOUNT }}
+          ZEALOT_E2E_PASSWORD: ${{ secrets.ZEALOT_E2E_PASSWORD }}
+          ZEALOT_E2E_CHARACTER: ${{ secrets.ZEALOT_E2E_CHARACTER }}
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y xvfb libgl1 libgl1-mesa-dri libx11-6 libxext6 libxrandr2 libxi6 libxcursor1 libxinerama1 libasound2t64 imagemagick
+          archive=$(find client-package -name '*-linux-x86_64.tar.gz' -print -quit)
+          test -n "${archive}"
+          mkdir client-runtime
+          tar -xzf "${archive}" -C client-runtime
+          runtime_root=$(find client-runtime -mindepth 1 -maxdepth 1 -type d -print -quit)
+          python3 tools/e2e/prepare_client_smoke.py --runtime-root "${runtime_root}"
+          cd "${runtime_root}"
+          xvfb-run -a ./run-zealot-client.sh > client-e2e.log 2>&1 &
+          client_pid=$!
+          set +e
+          python3 "${GITHUB_WORKSPACE}/tools/e2e/wait_for_client_smoke.py" --result zealot-e2e-result.txt
+          status=$?
+          if [ "${status}" -ne 0 ]; then
+            import -window root client-e2e-failure.png || true
+          fi
+          kill "${client_pid}" 2>/dev/null || true
+          wait "${client_pid}" 2>/dev/null || true
+          exit "${status}"
+
+      - name: Smoke test Windows release login
+        if: matrix.archive == 'windows'
+        shell: pwsh
+        env:
+          ZEALOT_E2E_ACCOUNT: ${{ secrets.ZEALOT_E2E_ACCOUNT }}
+          ZEALOT_E2E_PASSWORD: ${{ secrets.ZEALOT_E2E_PASSWORD }}
+          ZEALOT_E2E_CHARACTER: ${{ secrets.ZEALOT_E2E_CHARACTER }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $archive = Get-ChildItem -Path client-package -Filter '*-windows-x86_64.zip' -File | Select-Object -First 1
+          if ($null -eq $archive) { throw 'Windows release archive was not downloaded.' }
+          Expand-Archive -Path $archive.FullName -DestinationPath client-runtime
+          $runtimeRoot = Join-Path (Get-Location) 'client-runtime/Zealot Client'
+          python tools/e2e/prepare_client_smoke.py --runtime-root $runtimeRoot
+          $client = Start-Process -FilePath (Join-Path $runtimeRoot 'Zealot Client.exe') -WorkingDirectory $runtimeRoot -PassThru -RedirectStandardOutput (Join-Path $runtimeRoot 'client-e2e.log') -RedirectStandardError (Join-Path $runtimeRoot 'client-e2e.log')
+          try {
+            python tools/e2e/wait_for_client_smoke.py --result (Join-Path $runtimeRoot 'zealot-e2e-result.txt')
+          }
+          catch {
+            Add-Type -AssemblyName System.Windows.Forms
+            Add-Type -AssemblyName System.Drawing
+            $bitmap = New-Object System.Drawing.Bitmap([System.Windows.Forms.Screen]::PrimaryScreen.Bounds.Width, [System.Windows.Forms.Screen]::PrimaryScreen.Bounds.Height)
+            $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
+            $graphics.CopyFromScreen(0, 0, 0, 0, $bitmap.Size)
+            $bitmap.Save((Join-Path $runtimeRoot 'client-e2e-failure.png'))
+            throw
+          }
+          finally {
+            if (!$client.HasExited) { Stop-Process -Id $client.Id -Force }
+          }
+
+      - name: Smoke test macOS release login
+        if: startsWith(matrix.archive, 'macos-')
+        shell: bash
+        env:
+          ZEALOT_E2E_ACCOUNT: ${{ secrets.ZEALOT_E2E_ACCOUNT }}
+          ZEALOT_E2E_PASSWORD: ${{ secrets.ZEALOT_E2E_PASSWORD }}
+          ZEALOT_E2E_CHARACTER: ${{ secrets.ZEALOT_E2E_CHARACTER }}
+        run: |
+          set -euo pipefail
+          architecture="${{ matrix.archive == 'macos-arm64' && 'arm64' || 'x86_64' }}"
+          archive=$(find client-package -name "*-macos-${architecture}.zip" -print -quit)
+          test -n "${archive}"
+          mkdir client-runtime
+          ditto -x -k "${archive}" client-runtime
+          runtime_root="${GITHUB_WORKSPACE}/client-runtime/Zealot Client.app/Contents/Resources"
+          python3 tools/e2e/prepare_client_smoke.py --runtime-root "${runtime_root}"
+          cd "${runtime_root}"
+          "../MacOS/Zealot Client" > client-e2e.log 2>&1 &
+          client_pid=$!
+          set +e
+          python3 "${GITHUB_WORKSPACE}/tools/e2e/wait_for_client_smoke.py" --result zealot-e2e-result.txt
+          status=$?
+          if [ "${status}" -ne 0 ]; then
+            screencapture -x client-e2e-failure.png || true
+          fi
+          kill "${client_pid}" 2>/dev/null || true
+          wait "${client_pid}" 2>/dev/null || true
+          exit "${status}"
+
+      - name: Upload E2E diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: client-release-e2e-${{ matrix.archive }}-${{ github.sha }}
+          path: |
+            client-runtime/**/client-e2e.log
+            client-runtime/**/zealot-e2e-result.txt
+            client-runtime/**/client-e2e-failure.png
+          if-no-files-found: ignore
