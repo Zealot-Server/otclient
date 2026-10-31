@@ -3,6 +3,7 @@ local loginStarted = false
 local characterLoginStarted = false
 local gameCallbacks
 local stage = 'startup'
+local originalLoginFailed
 
 local function setStage(nextStage)
     stage = nextStage
@@ -79,8 +80,8 @@ local function beginLogin()
         end
 
         setStage('sending production login')
-        EnterGame.setAccountName(E2E_CREDENTIALS.account)
-        EnterGame.setPassword(E2E_CREDENTIALS.password)
+        EnterGame.setAccountName(g_crypt.encrypt(E2E_CREDENTIALS.account))
+        EnterGame.setPassword(g_crypt.encrypt(E2E_CREDENTIALS.password))
         EnterGame.setHttpLogin(false)
         EnterGame.doLogin()
         scheduleEvent(selectCharacter, 250)
@@ -104,6 +105,14 @@ function init()
     }
     connect(g_game, gameCallbacks)
 
+    originalLoginFailed = EnterGame.loginFailed
+    EnterGame.loginFailed = function(requestId, message, result)
+        if not finished and G.requestId == requestId then
+            fail('production login rejected: ' .. tostring(message))
+        end
+        return originalLoginFailed(requestId, message, result)
+    end
+
     scheduleEvent(beginLogin, 1500)
     scheduleEvent(function()
         if not finished then
@@ -113,6 +122,10 @@ function init()
 end
 
 function terminate()
+    if originalLoginFailed then
+        EnterGame.loginFailed = originalLoginFailed
+        originalLoginFailed = nil
+    end
     if gameCallbacks then
         disconnect(g_game, gameCallbacks)
         gameCallbacks = nil

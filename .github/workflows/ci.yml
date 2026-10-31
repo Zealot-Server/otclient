@@ -343,6 +343,11 @@ jobs:
             if ($LASTEXITCODE -ne 0) { throw "Client smoke test failed with exit code $LASTEXITCODE" }
           }
           catch {
+            Get-WinEvent -FilterHashtable @{ LogName = 'Application'; StartTime = (Get-Date).AddMinutes(-10) } -ErrorAction SilentlyContinue |
+              Where-Object { $_.ProviderName -in @('Application Error', 'Windows Error Reporting') -and $_.Message -match 'Zealot Client' } |
+              Select-Object -First 10 TimeCreated, ProviderName, Id, Message |
+              Format-List |
+              Out-File -FilePath (Join-Path $runtimeRoot 'client-e2e.windows-events.log')
             Add-Type -AssemblyName System.Windows.Forms
             Add-Type -AssemblyName System.Drawing
             $bitmap = New-Object System.Drawing.Bitmap([System.Windows.Forms.Screen]::PrimaryScreen.Bounds.Width, [System.Windows.Forms.Screen]::PrimaryScreen.Bounds.Height)
@@ -393,6 +398,7 @@ jobs:
             client-runtime/**/client-e2e.log
             client-runtime/**/client-e2e.stdout.log
             client-runtime/**/client-e2e.stderr.log
+            client-runtime/**/client-e2e.windows-events.log
             client-runtime/**/otclient.log
             client-runtime/**/xvfb.log
             client-runtime/**/zealot-e2e-result.txt

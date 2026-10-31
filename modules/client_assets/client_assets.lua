@@ -1295,10 +1295,21 @@ local function resolveFromGitHubReleases(config, version, callback)
     return callback(nil)
   end
 
+  local function descriptorFor(releases)
+    local release = findReleaseForVersion(releases, version)
+    if release then
+      return descriptorFromRelease(config, version, release)
+    end
+    if config.pinnedAssetTag and config.pinnedAssetTag:find(versionLabel(version), 1, true) then
+      logWarning('Release catalog did not list the configured asset tag; using pinned tag ' .. config.pinnedAssetTag .. '.')
+      return descriptorFromRelease(config, version, { tag_name = config.pinnedAssetTag })
+    end
+    return nil
+  end
+
   local cacheKey = tostring(config.releasesUrl or config.repository or '')
   if releasesCache[cacheKey] then
-    local release = findReleaseForVersion(releasesCache[cacheKey], version)
-    return callback(release and descriptorFromRelease(config, version, release) or nil)
+    return callback(descriptorFor(releasesCache[cacheKey]))
   end
 
   activeDownload.operationId = httpGetJSON(config, config.releasesUrl, function(data, err)
@@ -1307,12 +1318,16 @@ local function resolveFromGitHubReleases(config, version, callback)
     end
     activeDownload.operationId = nil
     if err then
+      local pinnedTag = config.pinnedAssetTag
+      if pinnedTag and pinnedTag:find(versionLabel(version), 1, true) then
+        logWarning('Release catalog unavailable; using configured asset tag ' .. pinnedTag .. '.')
+        return callback(descriptorFromRelease(config, version, { tag_name = pinnedTag }))
+      end
       return callback(nil, err)
     end
 
     releasesCache[cacheKey] = data
-    local release = findReleaseForVersion(releasesCache[cacheKey], version)
-    callback(release and descriptorFromRelease(config, version, release) or nil)
+    callback(descriptorFor(releasesCache[cacheKey]))
   end)
 end
 
