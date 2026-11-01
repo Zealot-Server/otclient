@@ -57,6 +57,7 @@ local SHOW_PREMIUM_WIDGETS = true
 local autoReconnectButton
 local autoReconnectEvent
 local lastLogout = 0
+local SESSION_END_IDLE = 4
 local function removeAutoReconnectEvent() --prevent
     if autoReconnectEvent then
         removeEvent(autoReconnectEvent)
@@ -495,7 +496,17 @@ end
 
 function onGameSessionEnd(reason)
     CharacterList.destroyLoadBox()
+    if reason == SESSION_END_IDLE then
+        lastLogout = g_clock.millis()
+        removeAutoReconnectEvent()
+    end
     CharacterList.showAgain()
+    if reason == SESSION_END_IDLE then
+        errorBox = displayInfoBox(tr('Disconnected'), tr('You were disconnected after 10 minutes of inactivity.'))
+        errorBox.onOk = function()
+            errorBox = nil
+        end
+    end
 end
 
 function onGameConnectionError(message, code)

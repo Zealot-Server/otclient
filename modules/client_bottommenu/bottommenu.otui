@@ -185,7 +185,7 @@ Panel
         anchors.fill: parent
         text-align: center
         text-wrap: true
-        font: verdana-9px
+        font: Verdana-9px
         color: #d0d0d0
         visible: false
 
@@ -225,7 +225,7 @@ Panel
         anchors.fill: parent
         text-align: center
         text-wrap: true
-        font: verdana-9px
+        font: Verdana-9px
         color: #d0d0d0
         visible: false
 

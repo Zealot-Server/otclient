@@ -26,7 +26,7 @@ function HTTP.getJSON(url, callback)
   return operation
 end
 
-function HTTP.post(url, data, callback, checkContentLength)
+function HTTP.post(url, data, callback, checkContentLength, timeout)
   if not g_http or not g_http.post then
     return error("HTTP.post is not supported")
   end
@@ -40,7 +40,7 @@ function HTTP.post(url, data, callback, checkContentLength)
     checkContentLength = true
   end
 
-  local operation = g_http.post(url, data, HTTP.timeout, is_json, checkContentLength)
+  local operation = g_http.post(url, data, timeout or HTTP.timeout, is_json, checkContentLength)
   HTTP.operations[operation] = { type = "post", url = url, callback = callback }
   return operation
 end

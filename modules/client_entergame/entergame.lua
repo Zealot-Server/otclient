@@ -504,29 +504,44 @@ function EnterGame.postShowOff()
     }), onRecvInfo, false)
 end
 
-function EnterGame.postShowCreatureBoost()
+function EnterGame.postShowCreatureBoost(attempt)
     local requestType = 'boostedcreature'
+    attempt = attempt or 1
+
+    local function retryOrShowUnavailable(reason)
+        reportRequestWarning(requestType, reason)
+        if attempt < 4 then
+            scheduleEvent(function()
+                local module = g_modules.getModule('client_entergame')
+                if module and module:isLoaded() and Services and Services.status then
+                    EnterGame.postShowCreatureBoost(attempt + 1)
+                end
+            end, attempt * 2000)
+        else
+            modules.client_bottommenu.setBoostedUnavailable()
+        end
+    end
+
     local onRecvInfo = function(message, err)
         if err then
-            -- onError(nil, 'Bad Request. 1 Game_entergame postShowCreatureBoost', 400)
-            reportRequestWarning(requestType, "Bad Request.Game_entergame postShowCreatureBoost1")
+            retryOrShowUnavailable(err)
             return
         end
 
-        local jsonString = message:match("{.*}")
+        local jsonString = message and message:match("{.*}")
         if not jsonString then
-            reportRequestWarning(requestType, "Invalid JSON response format")
+            retryOrShowUnavailable("Invalid JSON response format")
             return
         end
 
         local success, response = pcall(function() return json.decode(jsonString) end)
         if not success or not response then
-            reportRequestWarning(requestType, "Failed to parse JSON response")
+            retryOrShowUnavailable("Failed to parse JSON response")
             return
         end
 
         if response.errorMessage then
-            reportRequestWarning(requestType, response.errorMessage, response.errorCode)
+            retryOrShowUnavailable(response.errorMessage)
             return
         end
 
@@ -535,7 +550,7 @@ function EnterGame.postShowCreatureBoost()
 
     HTTP.post(Services.status, json.encode({
         type = requestType
-    }), onRecvInfo, false)
+    }), onRecvInfo, false, 8)
 end
 
 function EnterGame.show()
