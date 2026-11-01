@@ -66,6 +66,13 @@ function init()
     monsterNameFallback = boostedWindow:recursiveGetChildById('creatureNameFallback')
     bossNameFallback = boostedWindow:recursiveGetChildById('bossNameFallback')
 
+    monsterOutfit:setVisible(false)
+    bossOutfit:setVisible(false)
+    monsterNameFallback:setText(tr('Loading...'))
+    monsterNameFallback:setVisible(true)
+    bossNameFallback:setText(tr('Loading...'))
+    bossNameFallback:setVisible(true)
+
     -- The instructional placeholder is only useful when no status service was
     -- configured. With one, EnterGame replaces these slots with its response.
     if not Services.status and default_info then
@@ -541,7 +548,7 @@ local function applyToBoostedSlot(raceId, outfitData, boostedName, outfitWidget,
 
     if raceId then
         local raceData = g_things.getRaceData(raceId)
-        if raceData and raceData.raceId ~= 0 then
+        if raceData and raceData.raceId ~= 0 and raceData.outfit and raceData.outfit.type and raceData.outfit.type > 0 then
             outfit = raceData.outfit
             name = raceData.name or name
         end
@@ -562,6 +569,7 @@ local function applyToBoostedSlot(raceId, outfitData, boostedName, outfitWidget,
     if not outfit then
         local msg = string.format("[%s] Boosted creature with race id %s could not be rendered.", fileName, tostring(raceId))
         g_logger.warning(msg)
+        showBoostedNameFallback(name, outfitWidget, imageWidget, nameFallbackWidget, tooltipText)
         return
     end
 
@@ -587,6 +595,14 @@ local function applyToBoostedSlot(raceId, outfitData, boostedName, outfitWidget,
     end
     outfitWidget:setTooltip(tr(tooltipText, name))
     g_logger.info(string.format("[Boosted] applied %s with outfit type %s", name, tostring(outfit.type)))
+end
+
+function setBoostedUnavailable()
+    if not boostedWindow then
+        return
+    end
+    showBoostedNameFallback(tr('Unavailable'), monsterOutfit, monsterImage, monsterNameFallback, CREATURE_BONUS_TEXT)
+    showBoostedNameFallback(tr('Unavailable'), bossOutfit, bossImage, bossNameFallback, BOSS_BONUS_TEXT)
 end
 
 function setBoostedCreatureAndBoss(data)

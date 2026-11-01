@@ -149,6 +149,8 @@ Fluxo local recomendado:
 3. Abra o OTClient.
 4. Conecte usando `127.0.0.1` com login HTTP na porta `8088`.
 
+O Canary Zealot envia `SESSION_END_IDLE = 4` para uma desconexao apos 10 minutos sem acoes. `modules/client_entergame/characterlist.lua` mostra o aviso de inatividade. Erros de socket, como o codigo 60 no macOS, continuam sendo tratados como timeout de rede em `modules/corelib/net.lua`.
+
 ## Solucao de Problemas
 
 | Problema | Verificacao |
