@@ -27,7 +27,6 @@ local currentIndex = 1
 GameStore = {}
 -- == Enums ==--
 GameStore.website = {
-    WEBSITE_GETCOINS = "https://github.com/mehah/otclient",
     IMAGES_URL = "http://127.0.0.1:8080/images/store/",
 }
 
@@ -213,7 +212,7 @@ local STORE_ICON_TAGS = {
     ["{capacityicon}"]            = {clip = "156 0 13 13", text = ""},
     ["{use}"]                     = {clip = "169 0 13 13", text = "can be used"},
     ["{useicon}"]                 = {clip = "169 0 13 13", text = ""},
-    ["{transferableprice}"]       = {clip = "182 0 13 13", text = "can be purchased with transferable Tibia Coins"},
+    ["{transferableprice}"]       = {clip = "182 0 13 13", text = "can be purchased with transferable Zealot Coins"},
     ["{transferablepriceicon}"]   = {clip = "182 0 13 13", text = ""},
     ["{star}"]                    = {localImg = "/game_store/images/icon-star-gold", text = ""},
 }
@@ -972,8 +971,8 @@ function getUI()
 end
 
 function getCoinsWebsite()
-    if GameStore.website.WEBSITE_GETCOINS ~= "" then
-        g_platform.openUrl(GameStore.website.WEBSITE_GETCOINS)
+    if Services and Services.getCoinsUrl and Services.getCoinsUrl ~= "" then
+        g_platform.openUrl(Services.getCoinsUrl)
     else
         sendMessageBox("Error", "No data for store URL.")
     end

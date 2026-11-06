@@ -92,8 +92,12 @@ g_app.hasUpdater = function()
     return (Services.updater and Services.updater ~= "" and g_modules.getModule("updater"))
 end
 
--- setup logger
-g_logger.setLogFile(g_resources.getWorkDir() .. g_app.getCompactName() .. '.log')
+local function physicalPath(directory, name)
+    return directory .. (directory:match('[/\\]$') and '' or '/') .. name
+end
+
+-- Keep runtime logs outside the signed macOS app bundle.
+g_logger.setLogFile(physicalPath(g_resources.getUserDir(), g_app.getCompactName() .. '.log'))
 g_logger.info("Operating system: " .. g_platform.getOSName())
 
 -- print first terminal message
@@ -110,12 +114,12 @@ else
 end
 
 -- add data directory to the search path
-if not g_resources.addSearchPath(g_resources.getWorkDir() .. 'data', true) then
+if not g_resources.addSearchPath(physicalPath(g_resources.getWorkDir(), 'data'), true) then
     g_logger.fatal('Unable to add data directory to the search path.')
 end
 
 -- add modules directory to the search path
-if not g_resources.addSearchPath(g_resources.getWorkDir() .. 'modules', true) then
+if not g_resources.addSearchPath(physicalPath(g_resources.getWorkDir(), 'modules'), true) then
     g_logger.fatal('Unable to add modules directory to the search path.')
 end
 
@@ -123,7 +127,7 @@ g_html.addGlobalStyle('/data/styles/html.css')
 g_html.addGlobalStyle('/data/styles/custom.css')
 
 -- try to add mods path too
-g_resources.addSearchPath(g_resources.getWorkDir() .. 'mods', true)
+g_resources.addSearchPath(physicalPath(g_resources.getWorkDir(), 'mods'), true)
 
 -- setup directory for saving configurations
 g_resources.setupUserWriteDir(('%s/'):format(g_app.getCompactName()))

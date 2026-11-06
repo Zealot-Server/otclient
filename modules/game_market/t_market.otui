@@ -373,6 +373,16 @@ MarketOfferWidget < UIWidget
     color: #c0c0c0
     font: Verdana Bold-11px
 
+MarketCoinCount < Label
+  id: zealotCoinCount
+  anchors.bottom: parent.bottom
+  anchors.right: parent.right
+  margin-right: 1
+  font: verdana-11px-rounded
+  color: #bfbfbf
+  text-auto-resize: true
+  phantom: true
+
 MarketItemList < UIWidget
   size: 36 36
   focusable: true

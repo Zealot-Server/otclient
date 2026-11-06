@@ -183,7 +183,7 @@ StoreWindow
     anchors.left: prev.right
     margin-left: 5
     margin-bottom: 2
-    !tooltip: tr('Get Tibia Coins')
+    !tooltip: tr('Get Zealot Coins')
     image-color: green
     icon: /images/ui/tibiaCoin
     icon-align: center

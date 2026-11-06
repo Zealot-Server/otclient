@@ -413,14 +413,14 @@ jobs:
           ditto -x -k "${archive}" client-runtime
           runtime_root="${GITHUB_WORKSPACE}/client-runtime/Zealot Client.app/Contents/Resources"
           python3 tools/e2e/prepare_client_smoke.py --runtime-root "${runtime_root}"
-          cd "${runtime_root}"
-          "../MacOS/Zealot Client" > client-e2e.log 2>&1 &
+          cd "${RUNNER_TEMP}"
+          "${GITHUB_WORKSPACE}/client-runtime/Zealot Client.app/Contents/MacOS/Zealot Client" > "${GITHUB_WORKSPACE}/client-runtime/client-e2e.log" 2>&1 &
           client_pid=$!
           set +e
-          python3 "${GITHUB_WORKSPACE}/tools/e2e/wait_for_client_smoke.py" --result zealot-e2e-result.txt --timeout 500
+          python3 "${GITHUB_WORKSPACE}/tools/e2e/wait_for_client_smoke.py" --result "${runtime_root}/zealot-e2e-result.txt" --timeout 500
           status=$?
           if [ "${status}" -ne 0 ]; then
-            screencapture -x client-e2e-failure.png || true
+            screencapture -x "${GITHUB_WORKSPACE}/client-runtime/client-e2e-failure.png" || true
           fi
           kill "${client_pid}" 2>/dev/null || true
           wait "${client_pid}" 2>/dev/null || true

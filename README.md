@@ -81,6 +81,12 @@ O nome exato do binario pode variar conforme a plataforma e o preset usado.
 
 ### macOS
 
+O bundle distribuido deve iniciar pelo Finder com qualquer diretorio de trabalho.
+`init.lua` monta `data`, `modules` e `mods` a partir do diretorio de recursos
+descoberto e grava o log no diretorio de preferencias do usuario. O teste de
+release macOS inicia o executavel fora da pasta `Resources` para detectar
+regressoes nesse caminho.
+
 ```bash
 export VCPKG_ROOT="$PWD/vcpkg"
 ./vcpkg/bootstrap-vcpkg.sh
