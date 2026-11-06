@@ -1,4 +1,4 @@
-local DONATION_URL = "https://github.com/mehah/otclient"
+local DONATION_URL = "https://www.zealot.website/?subtopic=donate&type=coins"
 local GAME_SHOP = nil
 local SECOND_CURRENCY_ENABLED = false
 
@@ -1139,7 +1139,7 @@ function gameShopTransferCoins(player, transfer)
 	
 	local message = "You've sent "
 	if amount > 0 then
-		message = message .. amount .. " Tibia coins "
+		message = message .. amount .. " Zealot Coins "
 	end
 
 	if amountSecond > 0 then

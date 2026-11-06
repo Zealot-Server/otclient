@@ -1,4 +1,3 @@
-local DONATION_URL = nil
 local GAME_SHOP_CODE = 201
 
 local categories = {}
@@ -130,7 +129,6 @@ function onGameShopFetchBase(data)
         addCategory(data.categories[i])
     end
 
-    DONATION_URL = data.url
 end
 
 function hideTransferWindow()
@@ -253,7 +251,9 @@ function comma_value(n)
 end
 
 function buyPoints()
-    g_platform.openUrl(DONATION_URL)
+    if Services and Services.getCoinsUrl and Services.getCoinsUrl ~= '' then
+        g_platform.openUrl(Services.getCoinsUrl)
+    end
 end
 
 function onGameShopFetchOffers(data)
@@ -309,7 +309,7 @@ function onGameShopUpdatePoints(data)
         transferWindow.taskPointsCoin:hide()
     end
 
-    transferWindow.coinsBalance:setText(tr("Transferable Tibia Coins: ") .. comma_value(premiumPoints))
+    transferWindow.coinsBalance:setText(tr("Transferable Zealot Coins: ") .. comma_value(premiumPoints))
     transferWindow.coinsAmountScrollbar:setMaximum(premiumPoints)
 end
 

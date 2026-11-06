@@ -88,7 +88,7 @@ function MarketOwnOffers.onParseMyOffers(buyOffers, sellOffers)
             widget.actionId = i
             widget:setBackgroundColor(color)
             widget.amount:setText(data.amount)
-            widget.name:setText(g_things.getThingType(data.itemId, ThingCategoryItem):getMarketData().name)
+            widget.name:setText(getMarketItemDisplayName(data.itemId))
             widget.endAt:setText(os.date("%Y-%m-%d, %H:%M:%S", data.timestamp))
             widget.counter = data.counter
 
@@ -132,7 +132,7 @@ function MarketOwnOffers.onParseMyOffers(buyOffers, sellOffers)
             widget.actionId = i
             widget:setBackgroundColor(color)
             widget.amount:setText(data.amount)
-            widget.name:setText(g_things.getThingType(data.itemId, ThingCategoryItem):getMarketData().name)
+            widget.name:setText(getMarketItemDisplayName(data.itemId))
             widget.endAt:setText(os.date("%Y-%m-%d, %H:%M:%S", data.timestamp))
 
             local itemTier = data.itemTier or 0
@@ -273,7 +273,7 @@ function MarketOwnOffers.onTopListValueChange(scroll, value, delta)
         widget.actionId = index
         widget:setBackgroundColor(color)
         widget.amount:setText(data.amount)
-        widget.name:setText(g_things.getThingType(data.itemId, ThingCategoryItem):getMarketData().name)
+        widget.name:setText(getMarketItemDisplayName(data.itemId))
         widget.endAt:setText(os.date("%Y-%m-%d, %H:%M:%S", data.timestamp))
         widget.counter = data.counter
         widget.piecePrice:setColor("#c0c0c0")
@@ -324,7 +324,7 @@ local function createWidgetMarket(widget, count, value, startLabel, i)
     widget.actionId = index
     widget:setBackgroundColor(color)
     widget.amount:setText(data.amount)
-    widget.name:setText(g_things.getThingType(data.itemId, ThingCategoryItem):getMarketData().name)
+    widget.name:setText(getMarketItemDisplayName(data.itemId))
     widget.endAt:setText(os.date("%Y-%m-%d, %H:%M:%S", data.timestamp))
     widget.counter = data.counter
     widget.piecePrice:setColor("#c0c0c0")

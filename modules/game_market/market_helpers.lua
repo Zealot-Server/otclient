@@ -24,6 +24,13 @@ function sendMarketCancelOffer(timestamp, counter)
     g_game.cancelMarketOffer(timestamp, counter)
 end
 
+function getMarketItemDisplayName(itemId)
+    if itemId == 22118 then
+        return 'Zealot Coins'
+    end
+    return g_things.getThingType(itemId, ThingCategoryItem):getMarketData().name
+end
+
 function getTransferableTibiaCoins()
     local player = g_game.getLocalPlayer()
     if not player then

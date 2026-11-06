@@ -25,6 +25,26 @@ local cachedTransferableTibiaCoins = 0
 local isSearching = false
 local isRebuildingCategory = false
 
+local ZEALOT_COIN_ITEM_ID = 22118
+local ZEALOT_COIN_ICON = '/game_market/images/zealot-coin'
+
+local function updateCoinItemIcon(itemWidget, itemId, count)
+    local isCoin = itemId == ZEALOT_COIN_ITEM_ID
+    itemWidget:setItemVisible(not isCoin)
+    itemWidget:setImageSource(isCoin and ZEALOT_COIN_ICON or '')
+
+    local countLabel = itemWidget:getChildById('zealotCoinCount')
+    if isCoin and count and count > 1 then
+        if not countLabel then
+            countLabel = g_ui.createWidget('MarketCoinCount', itemWidget)
+        end
+        countLabel:setText(tostring(count))
+        countLabel:show()
+    elseif countLabel then
+        countLabel:hide()
+    end
+end
+
 local cache = {
     SCROLL_MARKET_ITEMS = {
         listMin = 0,
@@ -424,8 +444,8 @@ function onParseStoreGetCoin(coins, transferableCoins)
         return
     end
 
-    local coinTooltip = "Total Tibia Coins: " .. comma_value(coins + transferableCoins) ..
-                            "\nIncluded transferable Tibia Coins: " .. comma_value(transferableCoins)
+    local coinTooltip = "Total Zealot Coins: " .. comma_value(coins + transferableCoins) ..
+                            "\nIncluded transferable Zealot Coins: " .. comma_value(transferableCoins)
 
     marketWindow.contentPanel.coinPanel.gold:setText(comma_value(transferableCoins))
     marketWindow.contentPanel.coinPanel.gold:setTooltip(coinTooltip)
@@ -507,6 +527,9 @@ function configureList()
             if item then
                 local marketData = itemType:getMarketData()
                 if not table.empty(marketData) then
+                    if itemType:getId() == 22118 then
+                        marketData.name = getMarketItemDisplayName(itemType:getId())
+                    end
                     item:setId(marketData.showAs)
                     local marketItem = {
                         displayItem = item,
@@ -1068,6 +1091,7 @@ function onItemListValueChange(scroll, value, delta)
             end
 
             widget.item:getItem():setCount(count)
+            updateCoinItemIcon(widget.item, data.thingType:getId(), count)
             widget.item.itemIndex = index -- Store the actual data index, not pool index
             widget.item:setTooltip(tr("%s%s%s%s", comma_value(count), "x", (count > 65000 and "+ " or " "),
                 data.marketData.name))
@@ -1168,6 +1192,7 @@ function onSelectChildCategory(widget, selected, keepFilter)
     end
 
     marketWindow.contentPanel.selectedItem:setItemId(0)
+    updateCoinItemIcon(marketWindow.contentPanel.selectedItem, 0)
     itemList.onChildFocusChange = function(self, selected, oldFocus)
         onSelectChildItem(self, selected, oldFocus)
     end
@@ -1200,6 +1225,7 @@ function onSelectChildCategory(widget, selected, keepFilter)
 
         widget:setBackgroundColor('#363636')
         widget.item:getItem():setCount(count)
+        updateCoinItemIcon(widget.item, itemInfo.thingType:getId(), count)
         widget.item.itemIndex = i
         widget.item:setTooltip(tr("%s%s%s%s", comma_value(count), "x", (count > 65000 and "+ " or " "),
             itemInfo.marketData.name))
@@ -1268,6 +1294,7 @@ function onUpdateChildItem(itemID, tier)
             end
 
             widget.item:getItem():setCount(count)
+            updateCoinItemIcon(widget.item, itemID, count)
 
             widget.grayHover:setOpacity(count > 0 and '0.0' or '0.5')
             break
@@ -1314,11 +1341,10 @@ function onSelectChildItem(widget, selected, oldFocus)
         lastWidget = widget
     }
 
-    if itemID == 22118 then
-        marketWindow.contentPanel.selectedItem:getItem():setCount(getTransferableTibiaCoins())
-    else
-        marketWindow.contentPanel.selectedItem:getItem():setCount(getDepotItemCount(itemID, itemTier))
-    end
+    local selectedCount = itemID == ZEALOT_COIN_ITEM_ID and getTransferableTibiaCoins() or
+        getDepotItemCount(itemID, itemTier)
+    marketWindow.contentPanel.selectedItem:getItem():setCount(selectedCount)
+    updateCoinItemIcon(marketWindow.contentPanel.selectedItem, itemID, selectedCount)
     onClearMainMarket(false)
     refreshCreateOfferAmountRange()
 
@@ -1351,6 +1377,7 @@ function onClearMainMarket(cleanList)
         updateSellCount(nil, 0)
         updateBuyCount(nil, 0)
         marketWindow.contentPanel.selectedItem:setItemId(0)
+        updateCoinItemIcon(marketWindow.contentPanel.selectedItem, 0)
         marketWindow.contentPanel.itemList:destroyChildren()
     end
 
@@ -1996,6 +2023,7 @@ function onSearchItem(textField)
 
     marketWindow.contentPanel.mainMarket.getPotionsButton:setVisible(false)
     marketWindow.contentPanel.selectedItem:setItemId(0)
+    updateCoinItemIcon(marketWindow.contentPanel.selectedItem, 0)
 
     itemList.onChildFocusChange = function(self, selected, oldFocus)
         onSelectChildItem(self, selected, oldFocus)
@@ -2052,6 +2080,7 @@ function onSearchItem(textField)
 
         widget:setBackgroundColor('#363636')
         widget.item:getItem():setCount(count)
+        updateCoinItemIcon(widget.item, itemInfo.thingType:getId(), count)
         widget.item.itemIndex = i -- Store item index as property
         widget.item:setTooltip(tr("%s%s%s%s", comma_value(count), "x", (count > 65000 and "+ " or " "),
             itemInfo.marketData.name))
@@ -2135,6 +2164,7 @@ function onShowRedirect(item)
 
     marketWindow.contentPanel.mainMarket.getPotionsButton:setVisible(false)
     marketWindow.contentPanel.selectedItem:setItemId(0)
+    updateCoinItemIcon(marketWindow.contentPanel.selectedItem, 0)
 
     itemList.onChildFocusChange = function(self, selected, oldFocus)
         onSelectChildItem(self, selected, oldFocus)
@@ -2197,6 +2227,7 @@ function onShowRedirect(item)
 
         widget:setBackgroundColor('#363636')
         widget.item:getItem():setCount(count)
+        updateCoinItemIcon(widget.item, itemInfo.thingType:getId(), count)
         widget.item.itemIndex = i
         widget.item:setTooltip(tr("%s%s%s%s", comma_value(count), "x", (count > 65000 and "+ " or " "),
             itemInfo.marketData.name))
