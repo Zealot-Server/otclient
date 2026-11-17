@@ -31,6 +31,7 @@
 
 #include "httplogin.h"
 #include <framework/core/asyncdispatcher.h>
+#include <framework/core/application.h>
 #include <framework/core/eventdispatcher.h>
 #include <framework/core/logger.h>
 #include <nlohmann/json.hpp>
@@ -198,7 +199,7 @@ void LoginHttp::startHttpLogin(const std::string& host, const std::string& path,
     cli.set_logger(
         [this](const auto& req, const auto& res) { LoginHttp::Logger(req, res); });
 
-    const auto body = json{ {"email", email}, {"password", password}, {"stayloggedin", true}, {"type", "login"} };
+    const auto body = json{ {"email", email}, {"password", password}, {"stayloggedin", true}, {"type", "login"}, {"appversion", g_app.getVersion()} };
     const httplib::Headers headers = { {"User-Agent", "Mozilla/5.0"} };
 
     if (auto res = cli.Post(path, headers, body.dump(1), "application/json")) {
@@ -306,7 +307,8 @@ void LoginHttp::httpLogin(const std::string& host, const std::string& path,
                 {"email", email},
                 {"password", password},
                 {"stayloggedin", true},
-                {"type", "login"}
+                {"type", "login"},
+                {"appversion", g_app.getVersion()}
             };
 
             if (!token.empty()) {
@@ -387,7 +389,8 @@ LoginHttp::HttpResponse LoginHttp::loginHttpsJson(const std::string& host,
         {"email", email},
         {"password", password},
         {"stayloggedin", true},
-        {"type", "login"}
+        {"type", "login"},
+        {"appversion", g_app.getVersion()}
     };
 
     if (!token.empty()) {
@@ -433,7 +436,8 @@ LoginHttp::HttpResponse LoginHttp::loginHttpJson(const std::string& host,
         {"email", email},
         {"password", password},
         {"stayloggedin", true},
-        {"type", "login"}
+        {"type", "login"},
+        {"appversion", g_app.getVersion()}
     };
 
     if (!token.empty()) {
