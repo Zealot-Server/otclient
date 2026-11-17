@@ -1,0 +1,8 @@
+Module
+  name: client_update
+  description: Zealot desktop release update prompt
+  reloadable: false
+  scripts: [ client_update ]
+  dependencies: [ client_locales, client_styles ]
+  @onLoad: ClientUpdate.init()
+  @onUnload: ClientUpdate.terminate()

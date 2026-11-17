@@ -9,6 +9,7 @@ Services = {
     --websites = "http://localhost/?subtopic=accountmanagement", --./client_entergame "Forgot password and/or email"
     --createAccount = "http://localhost/clientcreateaccount.php", --./client_entergame -- createAccount.lua
     getCoinsUrl = "https://www.zealot.website/?subtopic=donate&type=coins", -- ./game_market | ./client_entergame
+    clientUpdate = "https://www.zealot.website/client-update.php",
     clientAssets = {
         enabled = true,
         -- Os assets publicados pertencem ao espelho controlado pela Zealot.

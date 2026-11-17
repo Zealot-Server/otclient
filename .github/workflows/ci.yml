@@ -82,6 +82,18 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  update-helper-windows:
+    name: Windows update helper smoke
+    if: ${{ !inputs.windows_smoke_only }}
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+      - name: Test full package swap and backup
+        shell: pwsh
+        run: ./tools/test_updater_windows.ps1
+
   changes:
     name: Detect Build Scope
     if: ${{ !inputs.windows_smoke_only }}

@@ -48,6 +48,9 @@ function startup()
     else
         EnterGame.firstShow()
     end
+    if ClientUpdate then
+        ClientUpdate.check()
+    end
     if g_app.hasUpdater() and g_sounds then
         g_sounds.setAudioEnabled(g_settings.getBoolean('enableAudio'))
     end

@@ -17,11 +17,11 @@ function HTTP.get(url, callback)
   return operation
 end
 
-function HTTP.getJSON(url, callback)
+function HTTP.getJSON(url, callback, timeout)
   if not g_http or not g_http.get then
     return error("HTTP.getJSON is not supported")
   end
-  local operation = g_http.get(url, HTTP.timeout)
+  local operation = g_http.get(url, timeout or HTTP.timeout)
   HTTP.operations[operation] = { type = "get", json = true, url = url, callback = callback }
   return operation
 end
