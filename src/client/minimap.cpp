@@ -361,7 +361,13 @@ bool Minimap::loadOtmm(const std::string& fileName)
             if (ret != Z_OK || destLen != blockSize)
                 break;
 
-            memcpy(&block.getTiles(), decompressBuffer.data(), blockSize);
+            const auto* loadedTiles = reinterpret_cast<const MinimapTile*>(decompressBuffer.data());
+            auto& tiles = block.getTiles();
+            // A partially explored personal map must not erase tiles from the bundled world map.
+            for (size_t index = 0; index < tiles.size(); ++index) {
+                if (loadedTiles[index].hasFlag(MinimapTileWasSeen))
+                    tiles[index] = loadedTiles[index];
+            }
             block.mustUpdate();
             block.justSaw();
         }

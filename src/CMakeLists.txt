@@ -86,7 +86,7 @@ elseif(WASM)
   set(FRAMEWORK_DEFINITIONS ${FRAMEWORK_DEFINITIONS} -DOPENGL_ES=2)
 endif()
 
-set(VERSION "1.0.3")
+set(VERSION "1.0.4")
 
 # *****************************************************************************
 # Definitions code
