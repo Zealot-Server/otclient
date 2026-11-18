@@ -498,8 +498,12 @@ if (TOGGLE_FRAMEWORK_SOUND)
           framework/sound/soundmanager.cpp
           framework/sound/soundsource.cpp
           framework/sound/streamsoundsource.cpp
-          framework/sound/soundeffect.cpp
   )
+  if(WASM)
+    list(APPEND SOURCE_FILES framework/sound/soundeffect_web.cpp)
+  else()
+    list(APPEND SOURCE_FILES framework/sound/soundeffect.cpp)
+  endif()
 endif()
 
 if (WASM)

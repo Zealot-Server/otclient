@@ -169,22 +169,28 @@ void SoundSource::update()
 
 void SoundSource::setEffect(const SoundEffectPtr soundEffect)
 {
+#ifndef __EMSCRIPTEN__
     m_effectId = soundEffect->m_effectId;
     alSource3i(m_sourceId, AL_AUXILIARY_SEND_FILTER, static_cast<ALint>(soundEffect->m_effectId), 0, AL_FILTER_NULL);
     const ALenum err = alGetError();
     if (err != AL_NO_ERROR) {
         g_logger.error("Failed to set effect on source: {}", alGetString(err));
     }
+#else
+    (void)soundEffect;
+#endif
 }
 
 void SoundSource::removeEffect()
 {
     if (m_effectId != 0) {
         m_effectId = 0;
+#ifndef __EMSCRIPTEN__
         alSource3i(m_sourceId, AL_AUXILIARY_SEND_FILTER, AL_EFFECTSLOT_NULL, 0, AL_FILTER_NULL);
         const ALenum err = alGetError();
         if (err != AL_NO_ERROR) {
             g_logger.error("Failed to remove effect on source: {}", alGetString(err));
         }
+#endif
     }
 }
