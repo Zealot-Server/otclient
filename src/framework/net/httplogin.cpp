@@ -31,7 +31,7 @@
 
 #include "httplogin.h"
 #include <framework/core/asyncdispatcher.h>
-#include <framework/core/application.h>
+#include <framework/core/graphicalapplication.h>
 #include <framework/core/eventdispatcher.h>
 #include <framework/core/logger.h>
 #include <nlohmann/json.hpp>
@@ -208,7 +208,7 @@ void LoginHttp::startHttpLogin(const std::string& host, const std::string& path,
         }
     } else {
         const auto err = res.error();
-        g_logger.warning("HTTP error: {}", to_string(err));
+        g_logger.warning("HTTP error: {}", static_cast<int>(err));
     }
 }
 

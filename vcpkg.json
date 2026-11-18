@@ -13,7 +13,10 @@
     "libogg",
     "libvorbis",
     "nlohmann-json",
-    "openal-soft",
+    {
+      "name": "openal-soft",
+      "platform": "!wasm32"
+    },
     "openssl",
     "parallel-hashmap",
     "physfs",
@@ -50,5 +53,12 @@
       "platform": "windows"
     }
   ],
-  "builtin-baseline": "56bb2411609227288b70117ead2c47585ba07713"
+  "builtin-baseline": "56bb2411609227288b70117ead2c47585ba07713",
+  "overrides": [
+    {
+      "name": "openal-soft",
+      "version": "1.24.3",
+      "port-version": 1
+    }
+  ]
 }
