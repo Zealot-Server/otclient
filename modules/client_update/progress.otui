@@ -1,0 +1,25 @@
+StaticMainWindow
+  id: clientUpdateProgress
+  !text: tr('Updating Zealot Client')
+  width: 360
+  layout:
+    type: verticalBox
+    fit-children: true
+
+  Label
+    id: status
+    !text: tr('Preparing update...')
+    text-align: center
+    text-wrap: true
+    text-auto-resize: true
+
+  ProgressBar
+    id: progress
+    height: 16
+    margin-top: 8
+    margin-bottom: 8
+
+  Button
+    id: cancel
+    !text: tr('Cancel')
+    @onClick: ClientUpdate.cancel()

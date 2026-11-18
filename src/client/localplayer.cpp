@@ -205,9 +205,12 @@ bool LocalPlayer::autoWalk(const Position& destination, const bool retry)
             return;
         }
 
-        if (self->m_autoWalkDestination != result->destination) {
-            self->m_lastAutoWalkPosition = result->destination;
-        }
+        Position pathEnd = result->start;
+        for (const auto direction : result->path)
+            pathEnd = pathEnd.translatedToDirection(direction);
+
+        if (pathEnd != result->destination)
+            self->m_lastAutoWalkPosition = pathEnd;
 
         g_game.autoWalk(result->path, result->start);
     });

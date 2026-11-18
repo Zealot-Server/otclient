@@ -130,6 +130,12 @@ function mapController:onGameStart()
         loadFnc(minimapFile)
     end
 
+    -- Refresh the explored map with the current world shipped by Zealot.
+    local worldMinimap = '/data/minimap.otmm'
+    if otmm and g_resources.fileExists(worldMinimap) then
+        g_minimap.loadOtmm(worldMinimap)
+    end
+
     self.ui.minimapBorder.minimap:load()
 end
 
