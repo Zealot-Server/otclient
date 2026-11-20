@@ -51,6 +51,7 @@ end
 
 function init()
   record('module loaded')
+  g_resources.writeFileContentsToWorkDir('zealot-update-write-dir.txt', g_resources.getWriteDir())
   local originalGetJSON = HTTP.getJSON
   local originalDownload = HTTP.download
   local originalDisplay = displayGeneralBox
@@ -244,11 +245,15 @@ def invoke_helper(platform: str, old_runtime: Path, archive: Path,
     return result.returncode
 
 
-def wait_for_restart(marker: Path, expected_version: str, timeout: int = 90) -> None:
+def wait_for_restart(marker: Path, expected_version: str, old_client: subprocess.Popen,
+                     timeout: int = 90) -> None:
     deadline = time.monotonic() + timeout
     started = time.monotonic()
     state_path = marker.with_name("zealot-update-flow-state.txt")
     while time.monotonic() < deadline:
+        # Reap the old client as soon as it exits. On Unix, kill -0 still
+        # succeeds for an unreaped zombie, so the installer would wait forever.
+        old_client.poll()
         if marker.is_file():
             actual = marker.read_text().strip()
             if actual != expected_version:
@@ -269,10 +274,16 @@ def write_failure_state(work: Path, target: Path, platform: str) -> None:
         lines.append(f"Package: {location} exists={location.exists()}")
         root = runtime_root(location, platform)
         for filename in ("zealot-update-flow-state.txt", "zealot-update-clicked.txt",
-                         "zealot-update-restarted.txt"):
+                         "zealot-update-restarted.txt", "zealot-update-write-dir.txt"):
             marker = root / filename
             if marker.is_file():
                 lines.append(f"{filename}: {marker.read_text().strip()}")
+        write_dir = root / "zealot-update-write-dir.txt"
+        if write_dir.is_file():
+            installer_log = Path(write_dir.read_text().strip()) / "updates" / "install.log"
+            if installer_log.is_file():
+                shutil.copy2(installer_log, work / "actual-installer.log")
+                lines.append(f"Installer log captured: {installer_log}")
     (work / "failure-state.log").write_text("\n".join(lines) + "\n")
 
 
@@ -334,7 +345,7 @@ def main() -> None:
                                       stdout=client_log, stderr=subprocess.STDOUT)
         try:
             marker = runtime_root(target, args.platform) / "zealot-update-restarted.txt"
-            wait_for_restart(marker, args.new_version, timeout=240)
+            wait_for_restart(marker, args.new_version, old_client, timeout=240)
             old_client.wait(timeout=30)
         except (OSError, RuntimeError, subprocess.TimeoutExpired):
             write_failure_state(work, target, args.platform)
