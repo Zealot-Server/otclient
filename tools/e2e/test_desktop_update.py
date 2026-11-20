@@ -36,6 +36,7 @@ PROBE_SCRIPT = """function init()
 end
 """
 FLOW_SCRIPT = """local requested = false
+local delivered = false
 local expectedUrl = __PACKAGE_URL__
 local localUrl = __LOCAL_URL__
 local releaseVersion = __VERSION__
@@ -56,12 +57,19 @@ function init()
 
   HTTP.getJSON = function(url, callback, timeout)
     if url == Services.clientUpdate then
+      if delivered then return -1 end
+      delivered = true
       record('version request intercepted')
       scheduleEvent(function()
-        record('new version delivered')
-        callback({ version = releaseVersion, packages = {
+        record('new version delivered current=' .. tostring(g_app.getVersion()) ..
+          ' target=' .. releaseVersion .. ' os=' .. tostring(g_app.getOs()) ..
+          ' arch=' .. tostring(g_app.getBuildArch()) ..
+          ' desktop=' .. tostring(g_platform.isDesktop()) ..
+          ' package=' .. platform .. '/' .. architecture)
+        local ok, err = pcall(callback, { version = releaseVersion, packages = {
           [platform] = { [architecture] = { url = expectedUrl, sha256 = expectedSha } }
         } }, nil)
+        if not ok then record('update callback error: ' .. tostring(err)) end
       end, 100)
       return -1
     end
@@ -237,12 +245,18 @@ def invoke_helper(platform: str, old_runtime: Path, archive: Path,
 
 def wait_for_restart(marker: Path, expected_version: str, timeout: int = 90) -> None:
     deadline = time.monotonic() + timeout
+    started = time.monotonic()
+    state_path = marker.with_name("zealot-update-flow-state.txt")
     while time.monotonic() < deadline:
         if marker.is_file():
             actual = marker.read_text().strip()
             if actual != expected_version:
                 raise RuntimeError(f"Relaunched client version {actual}, expected {expected_version}")
             return
+        if time.monotonic() - started > 45 and state_path.is_file():
+            state = state_path.read_text().strip()
+            if "package download started" not in state and "automatic update selected" not in state:
+                raise RuntimeError(f"Update stalled before download: {state}")
         time.sleep(1)
     raise RuntimeError("Updated client did not launch and write its startup probe")
 
