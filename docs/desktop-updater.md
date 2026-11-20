@@ -22,13 +22,26 @@ preserva configurações e assets já instalados.
 
 ## Publicação
 
-1. Concluir e testar os quatro pacotes desktop no CI, incluindo o smoke do
-   script Windows e os testes de login dos pacotes.
+1. Concluir e testar os quatro pacotes desktop no CI, incluindo os testes de
+   login e `Updater E2E` para Linux, Windows, macOS Apple Silicon e macOS Intel.
+   Esse teste instala o pacote público 1.0.4 em um runner descartável. Um módulo
+   temporário responde à consulta de versão, aciona o botão de atualização e
+   entrega o pacote novo por um servidor HTTP local. O cliente real baixa,
+   verifica o SHA-256, executa o instalador e abre a versão nova. Antes disso,
+   um checksum errado deve deixar a instalação antiga intacta. Depois da troca,
+   o pacote anterior deve continuar no backup.
 2. Publicar o release GitHub com os quatro arquivos.
-3. Calcular e conferir os SHA-256 dos arquivos publicados.
-4. Atualizar `myaac-main/system/client-release.php` com a versão, URLs e hashes.
-5. Verificar que `client-update.php` devolve os mesmos dados da página de
-   download. Só então considerar elevar `MIN_CLIENT_APP_VERSION` no login-server.
+3. O workflow do site sincroniza automaticamente os links e hashes após conferir
+   os pacotes e o CI do mesmo commit. Verificar que `client-update.php` devolve
+   os mesmos dados da página de download. Só então considerar elevar
+   `MIN_CLIENT_APP_VERSION` no login-server.
+
+O `Updater E2E` cobre o prompt, o botão, o download, o instalador externo, a
+troca, o reinício e a conservação da versão anterior com pacotes reais. A
+resposta de versão e o servidor de arquivos são locais ao runner, porque o
+pacote candidato ainda não foi publicado. Os testes de login do release e a
+sincronização do site cobrem as outras partes do fluxo; um teste posterior à
+publicação poderá conferir a rota pública de ponta a ponta.
 
 O cliente 1.0.3 não contém este atualizador e precisa ser reinstalado
 manualmente. A partir do primeiro pacote que inclui `client_update`, o botão
