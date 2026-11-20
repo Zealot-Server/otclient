@@ -29,7 +29,11 @@ preserva configurações e assets já instalados.
    entrega o pacote novo por um servidor HTTP local. O cliente real baixa,
    verifica o SHA-256, executa o instalador e abre a versão nova. Antes disso,
    um checksum errado deve deixar a instalação antiga intacta. Depois da troca,
-   o pacote anterior deve continuar no backup.
+   o pacote anterior deve continuar no backup. No Windows, o teste inicia o
+   cliente 1.0.4 com o diretório de trabalho fora da instalação: o instalador
+   dessa versão mantém a pasta aberta quando o cliente é iniciado de dentro
+   dela. O teste separado `Windows update helper smoke` reproduz esse cenário
+   com o instalador corrigido que acompanha o novo pacote.
 2. Publicar o release GitHub com os quatro arquivos.
 3. O workflow do site sincroniza automaticamente os links e hashes após conferir
    os pacotes e o CI do mesmo commit. Verificar que `client-update.php` devolve
@@ -52,3 +56,6 @@ recompilar os clientes.
 O cliente 1.0.3 não contém este atualizador e precisa ser reinstalado
 manualmente. A partir do primeiro pacote que inclui `client_update`, o botão
 de atualização automática ficará disponível para releases posteriores.
+No Windows 1.0.4, a atualização automática pode falhar se o cliente foi aberto
+com a pasta de instalação como diretório de trabalho. Nesse caso, o jogador
+deve usar o botão de download e instalar o novo pacote manualmente uma vez.

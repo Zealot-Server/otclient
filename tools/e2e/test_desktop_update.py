@@ -341,7 +341,12 @@ def main() -> None:
     launcher = (target / "run-zealot-client.sh" if args.platform == "linux"
                 else executable(target, args.platform))
     with (work / "old-client.log").open("w") as client_log:
-        old_client = subprocess.Popen([str(launcher)], cwd=work if args.platform == "macos" else target,
+        # The published Windows 1.0.4 helper inherits the client's native cwd.
+        # Start outside its install directory so that version can complete the
+        # update. The Windows helper smoke test covers in-directory launches
+        # for the fixed helper included in the candidate package.
+        launch_directory = work if args.platform in ("macos", "windows") else target
+        old_client = subprocess.Popen([str(launcher)], cwd=launch_directory,
                                       stdout=client_log, stderr=subprocess.STDOUT)
         try:
             marker = runtime_root(target, args.platform) / "zealot-update-restarted.txt"
