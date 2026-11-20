@@ -16,6 +16,19 @@ on:
         description: Commit SHA of the packaged Windows artifact
         required: false
         type: string
+      updater_retest_only:
+        description: Re-test existing desktop packages without rebuilding
+        required: false
+        default: false
+        type: boolean
+      updater_source_run_id:
+        description: CI run containing the four desktop packages
+        required: false
+        type: string
+      updater_source_sha:
+        description: Commit SHA used in the four package artifact names
+        required: false
+        type: string
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
@@ -84,7 +97,7 @@ concurrency:
 jobs:
   update-helper-windows:
     name: Windows update helper smoke
-    if: ${{ !inputs.windows_smoke_only }}
+    if: ${{ !inputs.windows_smoke_only && !inputs.updater_retest_only }}
     runs-on: windows-latest
     permissions:
       contents: read
@@ -96,7 +109,7 @@ jobs:
 
   changes:
     name: Detect Build Scope
-    if: ${{ !inputs.windows_smoke_only }}
+    if: ${{ !inputs.windows_smoke_only && !inputs.updater_retest_only }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -192,7 +205,7 @@ jobs:
 
   checks:
     name: Fast Checks
-    if: (!inputs.windows_smoke_only) && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    if: (!inputs.windows_smoke_only) && (!inputs.updater_retest_only) && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     permissions:
       contents: read
       checks: write
@@ -202,7 +215,7 @@ jobs:
 
   tests-lua:
     name: Lua Syntax
-    if: (!inputs.windows_smoke_only) && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    if: (!inputs.windows_smoke_only) && (!inputs.updater_retest_only) && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     permissions:
       contents: read
     uses: ./.github/workflows/reusable-tests-lua.yml
@@ -458,9 +471,10 @@ jobs:
   updater-e2e:
     name: Updater E2E - ${{ matrix.name }}
     needs: [build-linux, build-windows, build-macos]
-    if: ${{ !inputs.windows_smoke_only && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) }}
+    if: ${{ always() && !inputs.windows_smoke_only && ((inputs.updater_retest_only && inputs.updater_source_run_id != '' && inputs.updater_source_sha != '') || (needs.build-linux.result == 'success' && needs.build-windows.result == 'success' && needs.build-macos.result == 'success' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false))) }}
     permissions:
       contents: read
+      actions: read
     strategy:
       fail-fast: false
       matrix:
@@ -498,8 +512,10 @@ jobs:
       - name: Download candidate client
         uses: actions/download-artifact@v4
         with:
-          name: zealot-client-${{ matrix.artifact }}-${{ github.sha }}
+          name: zealot-client-${{ matrix.artifact }}-${{ inputs.updater_retest_only && inputs.updater_source_sha || github.sha }}
           path: client-package
+          run-id: ${{ inputs.updater_retest_only && inputs.updater_source_run_id || github.run_id }}
+          github-token: ${{ github.token }}
 
       - name: Download published 1.0.4 baseline
         shell: bash

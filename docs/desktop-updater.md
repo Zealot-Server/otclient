@@ -43,6 +43,12 @@ pacote candidato ainda não foi publicado. Os testes de login do release e a
 sincronização do site cobrem as outras partes do fluxo; um teste posterior à
 publicação poderá conferir a rota pública de ponta a ponta.
 
+Para repetir apenas os quatro testes de atualização após corrigir o teste,
+execute `CI` com `updater_retest_only = true`, `updater_source_run_id` igual ao
+ID da execução que gerou os pacotes e `updater_source_sha` igual ao SHA usado
+nos nomes dos quatro artefatos. O reteste reutiliza os mesmos pacotes sem
+recompilar os clientes.
+
 O cliente 1.0.3 não contém este atualizador e precisa ser reinstalado
 manualmente. A partir do primeiro pacote que inclui `client_update`, o botão
 de atualização automática ficará disponível para releases posteriores.

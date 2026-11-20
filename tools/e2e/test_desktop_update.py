@@ -25,7 +25,7 @@ PROBE_MODULE = """Module
   description: Temporary desktop update restart probe
   sandboxed: true
   autoload: true
-  autoload-priority: 9999
+  autoload-priority: 9998
   scripts: [ probe ]
   @onLoad: init()
 """
@@ -43,14 +43,22 @@ local expectedSha = __SHA256__
 local platform = __PLATFORM__
 local architecture = __ARCHITECTURE__
 
+local function record(stage)
+  g_logger.info('[updater-e2e] ' .. stage)
+  g_resources.writeFileContentsToWorkDir('zealot-update-flow-state.txt', stage .. '\\n')
+end
+
 function init()
+  record('module loaded')
   local originalGetJSON = HTTP.getJSON
   local originalDownload = HTTP.download
   local originalDisplay = displayGeneralBox
 
   HTTP.getJSON = function(url, callback, timeout)
     if url == Services.clientUpdate then
+      record('version request intercepted')
       scheduleEvent(function()
+        record('new version delivered')
         callback({ version = releaseVersion, packages = {
           [platform] = { [architecture] = { url = expectedUrl, sha256 = expectedSha } }
         } }, nil)
@@ -62,6 +70,7 @@ function init()
 
   HTTP.download = function(url, file, callback, progress)
     if url == expectedUrl then
+      record('package download started')
       return originalDownload(localUrl, file, callback, progress)
     end
     return originalDownload(url, file, callback, progress)
@@ -70,10 +79,12 @@ function init()
   displayGeneralBox = function(title, message, buttons, ...)
     local box = originalDisplay(title, message, buttons, ...)
     if title == tr('Client update available') and not requested then
+      record('update prompt shown')
       requested = true
       scheduleEvent(function()
         for _, button in ipairs(buttons) do
           if button.text == tr('Update automatically') then
+            record('automatic update selected')
             g_resources.writeFileContentsToWorkDir('zealot-update-clicked.txt', 'PASS\\n')
             button.callback()
             return
@@ -85,7 +96,10 @@ function init()
   end
 
   scheduleEvent(function()
-    if not requested and ClientUpdate then ClientUpdate.check() end
+    if not requested and ClientUpdate then
+      record('checking update explicitly')
+      ClientUpdate.check()
+    end
   end, 3000)
 end
 """
@@ -112,7 +126,10 @@ def extract(archive: Path, destination: Path, platform: str) -> Path:
     else:
         with zipfile.ZipFile(archive) as bundle:
             bundle.extractall(destination)
-    roots = [entry for entry in destination.iterdir() if entry.is_dir()]
+    # The public Linux archive contains harmless empty top-level data/modules/mods
+    # directories alongside the actual package root. Select by init.lua.
+    roots = [entry for entry in destination.iterdir()
+             if entry.is_dir() and (runtime_root(entry, platform) / "init.lua").is_file()]
     if len(roots) != 1:
         raise RuntimeError(f"Expected one package root in {archive}, found {len(roots)}")
     return roots[0]
@@ -230,6 +247,20 @@ def wait_for_restart(marker: Path, expected_version: str, timeout: int = 90) -> 
     raise RuntimeError("Updated client did not launch and write its startup probe")
 
 
+def write_failure_state(work: Path, target: Path, platform: str) -> None:
+    locations = [target, *target.parent.glob(target.name + ".previous.*")]
+    lines = []
+    for location in locations:
+        lines.append(f"Package: {location} exists={location.exists()}")
+        root = runtime_root(location, platform)
+        for filename in ("zealot-update-flow-state.txt", "zealot-update-clicked.txt",
+                         "zealot-update-restarted.txt"):
+            marker = root / filename
+            if marker.is_file():
+                lines.append(f"{filename}: {marker.read_text().strip()}")
+    (work / "failure-state.log").write_text("\n".join(lines) + "\n")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--platform", required=True, choices=("linux", "macos", "windows"))
@@ -290,6 +321,9 @@ def main() -> None:
             marker = runtime_root(target, args.platform) / "zealot-update-restarted.txt"
             wait_for_restart(marker, args.new_version, timeout=240)
             old_client.wait(timeout=30)
+        except (OSError, RuntimeError, subprocess.TimeoutExpired):
+            write_failure_state(work, target, args.platform)
+            raise
         finally:
             if old_client.poll() is None:
                 old_client.terminate()
