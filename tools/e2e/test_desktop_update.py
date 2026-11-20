@@ -171,6 +171,7 @@ def inject_update_flow(package: Path, platform: str, package_url: str,
     (module / "zealot_update_flow_e2e.otmod").write_text(
         PROBE_MODULE.replace("zealot_update_e2e", "zealot_update_flow_e2e")
         .replace("scripts: [ probe ]", "scripts: [ flow ]")
+        .replace("sandboxed: true", "sandboxed: false")
     )
     source = FLOW_SCRIPT
     values = {
