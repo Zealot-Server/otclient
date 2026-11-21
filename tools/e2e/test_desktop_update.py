@@ -55,6 +55,7 @@ function init()
   local originalGetJSON = HTTP.getJSON
   local originalDownload = HTTP.download
   local originalDisplay = displayGeneralBox
+  local originalError = displayErrorBox
 
   HTTP.getJSON = function(url, callback, timeout)
     if url == Services.clientUpdate then
@@ -80,9 +81,17 @@ function init()
   HTTP.download = function(url, file, callback, progress)
     if url == expectedUrl then
       record('package download started')
-      return originalDownload(localUrl, file, callback, progress)
+      return originalDownload(localUrl, file, function(path, checksum, err)
+        record('package download result path=' .. tostring(path) .. ' error=' .. tostring(err))
+        callback(path, checksum, err)
+      end, progress)
     end
     return originalDownload(url, file, callback, progress)
+  end
+
+  displayErrorBox = function(title, message, ...)
+    record('client error title=' .. tostring(title) .. ' message=' .. tostring(message))
+    return originalError(title, message, ...)
   end
 
   displayGeneralBox = function(title, message, buttons, ...)
@@ -259,9 +268,12 @@ def wait_for_restart(marker: Path, expected_version: str, old_client: subprocess
             if actual != expected_version:
                 raise RuntimeError(f"Relaunched client version {actual}, expected {expected_version}")
             return
-        if time.monotonic() - started > 45 and state_path.is_file():
+        if state_path.is_file():
             state = state_path.read_text().strip()
-            if "package download started" not in state and "automatic update selected" not in state:
+            if state.startswith("client error"):
+                raise RuntimeError(f"Client rejected update: {state}")
+            if time.monotonic() - started > 45 and "package download started" not in state and \
+                    "automatic update selected" not in state:
                 raise RuntimeError(f"Update stalled before download: {state}")
         time.sleep(1)
     raise RuntimeError("Updated client did not launch and write its startup probe")
