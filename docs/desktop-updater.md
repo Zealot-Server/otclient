@@ -24,16 +24,19 @@ preserva configurações e assets já instalados.
 
 1. Concluir e testar os quatro pacotes desktop no CI, incluindo os testes de
    login e `Updater E2E` para Linux, Windows, macOS Apple Silicon e macOS Intel.
-   Esse teste instala o pacote público 1.0.4 em um runner descartável. Um módulo
-   temporário responde à consulta de versão, aciona o botão de atualização e
-   entrega o pacote novo por um servidor HTTP local. O cliente real baixa,
+   Em Linux e macOS, esse teste instala o pacote público 1.0.4 em um runner
+   descartável. No Windows, ele instala o pacote candidato 1.0.5 e simula uma
+   versão de metadados superior para exercitar o atualizador corrigido. Essa
+   parte verifica a troca do pacote e o reinício, mas não comprova uma
+   atualização automática do Windows 1.0.4. Um módulo temporário responde à
+   consulta de versão, aciona o botão de atualização e entrega o pacote novo
+   por um servidor HTTP local. O cliente real baixa,
    verifica o SHA-256, executa o instalador e abre a versão nova. Antes disso,
    um checksum errado deve deixar a instalação antiga intacta. Depois da troca,
-   o pacote anterior deve continuar no backup. No Windows, o teste inicia o
-   cliente 1.0.4 com o diretório de trabalho fora da instalação: o instalador
-   dessa versão mantém a pasta aberta quando o cliente é iniciado de dentro
-   dela. O teste separado `Windows update helper smoke` reproduz esse cenário
-   com o instalador corrigido que acompanha o novo pacote.
+   o pacote anterior deve continuar no backup. No Windows, o cliente é iniciado
+   dentro da pasta de instalação para verificar que o novo instalador libera o
+   diretório antes da troca. O teste separado `Windows update helper smoke`
+   também reproduz esse cenário.
 2. Publicar o release GitHub com os quatro arquivos.
 3. O workflow do site sincroniza automaticamente os links e hashes após conferir
    os pacotes e o CI do mesmo commit. Verificar que `client-update.php` devolve
@@ -56,6 +59,7 @@ recompilar os clientes.
 O cliente 1.0.3 não contém este atualizador e precisa ser reinstalado
 manualmente. A partir do primeiro pacote que inclui `client_update`, o botão
 de atualização automática ficará disponível para releases posteriores.
-No Windows 1.0.4, a atualização automática pode falhar se o cliente foi aberto
-com a pasta de instalação como diretório de trabalho. Nesse caso, o jogador
-deve usar o botão de download e instalar o novo pacote manualmente uma vez.
+No Windows 1.0.4, a atualização automática não foi validada e falhou no CI.
+O jogador deve usar o botão de download e instalar o novo pacote manualmente
+uma vez. O teste do pacote candidato verifica o atualizador para as versões
+seguintes.

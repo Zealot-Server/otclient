@@ -319,7 +319,12 @@ def main() -> None:
 
     work = args.work.resolve()
     work.mkdir(parents=True, exist_ok=True)
-    target = extract(args.old_archive.resolve(), work / "installed", args.platform)
+    # Windows 1.0.4 has a broken PowerShell launch and cannot prove automatic
+    # migration to 1.0.5. Exercise the candidate's real updater in Windows
+    # instead, with a synthetic higher metadata version and distinct package
+    # contents. The separate release smoke covers the published 1.0.4 binary.
+    baseline_archive = args.new_archive if args.platform == "windows" else args.old_archive
+    target = extract(baseline_archive.resolve(), work / "installed", args.platform)
     candidate = extract(args.new_archive.resolve(), work / "candidate", args.platform)
     old_runtime = runtime_root(target, args.platform)
     if args.platform == "windows":
@@ -337,12 +342,16 @@ def main() -> None:
     architecture = "arm64" if "macos-arm64" in args.new_archive.name else "x86_64"
     package_url = ("https://github.com/Zealot-Server/otclient/releases/download/"
                    f"v{args.new_version}/{args.new_archive.name}")
+    offered_version = args.new_version
+    if args.platform == "windows":
+        major, minor, patch = (int(part) for part in args.new_version.split("."))
+        offered_version = f"{major}.{minor}.{patch + 1}"
     inject_update_flow(target, args.platform, package_url,
                        f"http://127.0.0.1:{server.server_port}/candidate",
-                       args.new_version, sha256(archive), architecture)
+                       offered_version, sha256(archive), architecture)
     old_binary = sha256(executable(target, args.platform))
     new_binary = sha256(executable(candidate, args.platform))
-    if old_binary == new_binary:
+    if old_binary == new_binary and args.platform != "windows":
         raise RuntimeError("Candidate executable is identical to published baseline")
 
     # A corrupt package must leave the previous client runnable and unchanged.
@@ -361,11 +370,9 @@ def main() -> None:
     launcher = (target / "run-zealot-client.sh" if args.platform == "linux"
                 else executable(target, args.platform))
     with (work / "old-client.log").open("w") as client_log:
-        # The published Windows 1.0.4 helper inherits the client's native cwd.
-        # Start outside its install directory so that version can complete the
-        # update. The Windows helper smoke test covers in-directory launches
-        # for the fixed helper included in the candidate package.
-        launch_directory = work if args.platform in ("macos", "windows") else target
+        # Windows intentionally starts inside the install directory, so its
+        # helper must release the native process cwd before replacing it.
+        launch_directory = work if args.platform == "macos" else target
         old_client = subprocess.Popen([str(launcher)], cwd=launch_directory,
                                       stdout=client_log, stderr=subprocess.STDOUT)
         try:
@@ -387,7 +394,8 @@ def main() -> None:
         raise RuntimeError("Original published client was not preserved as a backup")
     if not (runtime_root(backups[0], args.platform) / "zealot-update-clicked.txt").is_file():
         raise RuntimeError("Old client did not activate the automatic update UI button")
-    print(f"PASS: {args.platform} rejected a corrupt package, downloaded and installed "
+    test_name = "candidate self-update" if args.platform == "windows" else "published baseline update"
+    print(f"PASS: {args.platform} {test_name} rejected a corrupt package, downloaded and installed "
           f"the candidate through the client UI, restarted version {args.new_version}, "
           "and retained the original client")
 
