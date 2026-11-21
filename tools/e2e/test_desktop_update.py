@@ -52,6 +52,7 @@ end
 function init()
   record('module loaded')
   g_resources.writeFileContentsToWorkDir('zealot-update-write-dir.txt', g_resources.getWriteDir())
+  g_resources.writeFileContentsToWorkDir('zealot-update-user-dir.txt', g_resources.getUserDir())
   local originalGetJSON = HTTP.getJSON
   local originalDownload = HTTP.download
   local originalDisplay = displayGeneralBox
@@ -83,7 +84,8 @@ function init()
       record('package download started')
       return originalDownload(localUrl, file, function(path, checksum, err)
         record('package download result path=' .. tostring(path) .. ' error=' .. tostring(err))
-        callback(path, checksum, err)
+        local ok, callbackError = pcall(callback, path, checksum, err)
+        if not ok then record('download callback error: ' .. tostring(callbackError)) end
       end, progress)
     end
     return originalDownload(url, file, callback, progress)
@@ -272,9 +274,8 @@ def wait_for_restart(marker: Path, expected_version: str, old_client: subprocess
             state = state_path.read_text().strip()
             if state.startswith("client error"):
                 raise RuntimeError(f"Client rejected update: {state}")
-            if time.monotonic() - started > 45 and "package download started" not in state and \
-                    "automatic update selected" not in state:
-                raise RuntimeError(f"Update stalled before download: {state}")
+            if time.monotonic() - started > 45 and old_client.poll() is None:
+                raise RuntimeError(f"Client remained open after update attempt: {state}")
         time.sleep(1)
     raise RuntimeError("Updated client did not launch and write its startup probe")
 
@@ -286,7 +287,8 @@ def write_failure_state(work: Path, target: Path, platform: str) -> None:
         lines.append(f"Package: {location} exists={location.exists()}")
         root = runtime_root(location, platform)
         for filename in ("zealot-update-flow-state.txt", "zealot-update-clicked.txt",
-                         "zealot-update-restarted.txt", "zealot-update-write-dir.txt"):
+                         "zealot-update-restarted.txt", "zealot-update-write-dir.txt",
+                         "zealot-update-user-dir.txt"):
             marker = root / filename
             if marker.is_file():
                 lines.append(f"{filename}: {marker.read_text().strip()}")
@@ -296,6 +298,12 @@ def write_failure_state(work: Path, target: Path, platform: str) -> None:
             if installer_log.is_file():
                 shutil.copy2(installer_log, work / "actual-installer.log")
                 lines.append(f"Installer log captured: {installer_log}")
+        user_dir = root / "zealot-update-user-dir.txt"
+        if user_dir.is_file():
+            client_log = Path(user_dir.read_text().strip()) / "otclient.log"
+            if client_log.is_file():
+                shutil.copy2(client_log, work / "actual-client.log")
+                lines.append(f"Client log captured: {client_log}")
     (work / "failure-state.log").write_text("\n".join(lines) + "\n")
 
 
