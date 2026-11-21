@@ -1,4 +1,5 @@
 $ErrorActionPreference = 'Stop'
+$previousDirectory = [System.Environment]::CurrentDirectory
 $root = Join-Path $env:RUNNER_TEMP ('zealot-updater-test-' + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $root | Out-Null
 try {
@@ -20,6 +21,9 @@ try {
         param([string]$FilePath, [string]$WorkingDirectory)
         $global:zealotUpdaterStarted = Test-Path -LiteralPath $FilePath
     }
+    # Reproduce the client launching PowerShell from its install directory.
+    [System.Environment]::CurrentDirectory = $target
+    Set-Location -LiteralPath $target
     & "$PSScriptRoot/../modules/client_update/apply-windows.ps1" -ClientPid 999999 `
         -Archive $archive -WorkDir $target -ExpectedSha256 $hash
 
@@ -31,5 +35,7 @@ try {
         throw 'Previous version backup was not retained.'
     }
 } finally {
+    [System.Environment]::CurrentDirectory = $previousDirectory
+    Set-Location -LiteralPath $previousDirectory
     Remove-Item -LiteralPath $root -Recurse -Force
 }

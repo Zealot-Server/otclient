@@ -16,6 +16,19 @@ on:
         description: Commit SHA of the packaged Windows artifact
         required: false
         type: string
+      updater_retest_only:
+        description: Re-test existing desktop packages without rebuilding
+        required: false
+        default: false
+        type: boolean
+      updater_source_run_id:
+        description: CI run containing the four desktop packages
+        required: false
+        type: string
+      updater_source_sha:
+        description: Commit SHA used in the four package artifact names
+        required: false
+        type: string
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
@@ -84,7 +97,7 @@ concurrency:
 jobs:
   update-helper-windows:
     name: Windows update helper smoke
-    if: ${{ !inputs.windows_smoke_only }}
+    if: ${{ !inputs.windows_smoke_only && !inputs.updater_retest_only }}
     runs-on: windows-latest
     permissions:
       contents: read
@@ -96,7 +109,7 @@ jobs:
 
   changes:
     name: Detect Build Scope
-    if: ${{ !inputs.windows_smoke_only }}
+    if: ${{ !inputs.windows_smoke_only && !inputs.updater_retest_only }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -192,7 +205,7 @@ jobs:
 
   checks:
     name: Fast Checks
-    if: (!inputs.windows_smoke_only) && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    if: (!inputs.windows_smoke_only) && (!inputs.updater_retest_only) && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     permissions:
       contents: read
       checks: write
@@ -202,7 +215,7 @@ jobs:
 
   tests-lua:
     name: Lua Syntax
-    if: (!inputs.windows_smoke_only) && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    if: (!inputs.windows_smoke_only) && (!inputs.updater_retest_only) && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     permissions:
       contents: read
     uses: ./.github/workflows/reusable-tests-lua.yml
@@ -453,6 +466,119 @@ jobs:
             client-runtime/**/xvfb.log
             client-runtime/**/zealot-e2e-result.txt
             client-runtime/**/client-e2e-failure.png
+          if-no-files-found: ignore
+
+  updater-e2e:
+    name: Updater E2E - ${{ matrix.name }}
+    needs: [build-linux, build-windows, build-macos]
+    if: ${{ always() && !inputs.windows_smoke_only && ((inputs.updater_retest_only && inputs.updater_source_run_id != '' && inputs.updater_source_sha != '') || (needs.build-linux.result == 'success' && needs.build-windows.result == 'success' && needs.build-macos.result == 'success' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false))) }}
+    permissions:
+      contents: read
+      actions: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux x86_64
+            os: ubuntu-latest
+            artifact: linux-x86_64
+            archive: linux
+            platform: linux
+            pattern: '*-linux-x86_64.tar.gz'
+          - name: Windows x86_64
+            os: windows-2025
+            artifact: windows-x86_64
+            archive: windows
+            platform: windows
+            pattern: '*-windows-x86_64.zip'
+          - name: macOS Apple Silicon
+            os: macos-15
+            artifact: macos-arm64
+            archive: macos-arm64
+            platform: macos
+            pattern: '*-macos-arm64.zip'
+          - name: macOS Intel
+            os: macos-15-intel
+            artifact: macos-x86_64
+            archive: macos-x86_64
+            platform: macos
+            pattern: '*-macos-x86_64.zip'
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 12
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Download candidate client
+        uses: actions/download-artifact@v4
+        with:
+          name: zealot-client-${{ matrix.artifact }}-${{ inputs.updater_retest_only && inputs.updater_source_sha || github.sha }}
+          path: client-package
+          run-id: ${{ inputs.updater_retest_only && inputs.updater_source_run_id || github.run_id }}
+          github-token: ${{ github.token }}
+
+      - name: Download published 1.0.4 baseline
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir old-package
+          gh release download v1.0.4 --repo Zealot-Server/otclient \
+            --pattern '${{ matrix.pattern }}' --dir old-package
+          test -n "$(find old-package -type f -print -quit)"
+
+      - name: Prepare Linux display and libraries
+        if: matrix.platform == 'linux'
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb x11-utils libgl1 libgl1-mesa-dri libx11-6 libxext6 libxrandr2 libxi6 libxcursor1 libxinerama1 libasound2t64
+          Xvfb :99 -screen 0 1280x800x24 > updater-xvfb.log 2>&1 &
+          echo "DISPLAY=:99" >> "$GITHUB_ENV"
+          sleep 2
+          xdpyinfo -display :99 >/dev/null
+
+      - name: Prepare Windows software OpenGL
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          & 'C:\msys64\usr\bin\bash.exe' -lc 'pacman -Sy --noconfirm mingw-w64-ucrt-x86_64-mesa'
+          if ($LASTEXITCODE -ne 0) { throw "MSYS2 Mesa installation failed with code $LASTEXITCODE" }
+          $env:GALLIUM_DRIVER = 'llvmpipe'
+          "GALLIUM_DRIVER=llvmpipe" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "C:\msys64\ucrt64\bin" | Out-File -FilePath $env:GITHUB_PATH -Append
+
+      - name: Verify installed client update and restart
+        shell: bash
+        env:
+          PLATFORM: ${{ matrix.platform }}
+          ARCHIVE_PATTERN: ${{ matrix.pattern }}
+          WINDOWS_OPENGL_DIR: C:\msys64\ucrt64\bin
+        run: |
+          set -euo pipefail
+          old_archive=$(find old-package -name "${ARCHIVE_PATTERN}" -type f -print -quit)
+          new_archive=$(find client-package -name "${ARCHIVE_PATTERN}" -type f -print -quit)
+          test -n "${old_archive}" && test -n "${new_archive}"
+          new_version=$(awk -F'"' '/^set\(VERSION / { print $2; exit }' src/CMakeLists.txt)
+          test -n "${new_version}"
+          args=(--platform "${PLATFORM}" --old-archive "${old_archive}" \
+            --new-archive "${new_archive}" --new-version "${new_version}" \
+            --work client-update-e2e)
+          if [[ "${PLATFORM}" == windows ]]; then
+            args+=(--windows-opengl-dir "${WINDOWS_OPENGL_DIR}")
+            python tools/e2e/test_desktop_update.py "${args[@]}"
+          else
+            python3 tools/e2e/test_desktop_update.py "${args[@]}"
+          fi
+
+      - name: Upload updater diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: client-updater-e2e-${{ matrix.archive }}-${{ github.sha }}
+          path: |
+            client-update-e2e/*.log
+            updater-xvfb.log
           if-no-files-found: ignore
 
   windows-smoke-retest:
