@@ -17,6 +17,9 @@ try {
 
     $target = $WorkDir.TrimEnd([char[]]@('/', '\'))
     $parent = Split-Path $target -Parent
+    # Set-Location changes the PowerShell runspace, not the process-wide native
+    # working directory. An inherited handle to $target would block its rename.
+    [System.Environment]::CurrentDirectory = $env:TEMP
     Set-Location -LiteralPath $env:TEMP
     $stage = Join-Path $parent ('.zealot-update.' + [guid]::NewGuid().ToString('N'))
     New-Item -ItemType Directory -Path $stage | Out-Null

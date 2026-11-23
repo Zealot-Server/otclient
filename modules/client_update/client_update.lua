@@ -1,6 +1,5 @@
 ClientUpdate = {}
 
-local unpackValues = table.unpack or unpack
 local downloadPage = 'https://www.zealot.website/?subtopic=downloadclient'
 local progressWindow
 local downloadOperation
@@ -86,7 +85,10 @@ local function applyArchive(downloadPath, expectedSha256)
   local program
   if osName == 'windows' then
     program = 'powershell'
-    args = { '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', unpackValues(args) }
+    args = { '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File',
+      base .. helperName, '-ClientPid', tostring(g_platform.getProcessId()),
+      '-Archive', base .. archiveName, '-WorkDir', g_resources.getWorkDir(),
+      '-ExpectedSha256', expectedSha256 }
   else
     program = '/bin/sh'
   end
