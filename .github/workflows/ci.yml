@@ -125,6 +125,16 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Verify packaged and runtime versions match
+        shell: bash
+        run: |
+          package_version=$(awk -F'"' '/^set\(VERSION / { print $2; exit }' src/CMakeLists.txt)
+          runtime_version=$(awk '/^#define GIT_VERSION / { print $3; exit }' src/gitinfo.h)
+          test -n "$package_version" && test "$package_version" = "$runtime_version" || {
+            echo "::error::Package version ($package_version) differs from runtime version ($runtime_version)"
+            exit 1
+          }
+
       - name: Detect changed paths
         id: filter
         if: github.event_name != 'workflow_dispatch' && github.event_name != 'merge_group'
