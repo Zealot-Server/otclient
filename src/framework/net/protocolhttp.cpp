@@ -25,6 +25,10 @@
 #include "framework/core/eventdispatcher.h"
 #include "framework/util/crypt.h"
 
+#include <algorithm>
+#include <cctype>
+#include <sstream>
+
 Http g_http;
 
 void Http::init()
@@ -386,6 +390,58 @@ void HttpSession::on_write()
     m_timer.async_wait([sft = shared_from_this()](const std::error_code& ec) {sft->onTimeout(ec); });
 }
 
+bool HttpSession::handleReleaseResponse(const std::string& header)
+{
+    const std::string releasePrefix = "https://github.com/Zealot-Server/otclient/releases/download/";
+    if (m_result->url.rfind(releasePrefix, 0) != 0 || !m_result->postData.empty())
+        return false;
+
+    std::istringstream stream(header);
+    std::string line, protocol;
+    int status = 0;
+    if (!std::getline(stream, line)) {
+        onError("Invalid release download response");
+        return true;
+    }
+    std::istringstream statusLine(line);
+    statusLine >> protocol >> status;
+    if (status == 200)
+        return false;
+    if (status != 301 && status != 302 && status != 303 && status != 307 && status != 308) {
+        onError("Release download returned HTTP " + std::to_string(status));
+        return true;
+    }
+
+    std::string location;
+    while (std::getline(stream, line)) {
+        if (!line.empty() && line.back() == '\r') line.pop_back();
+        const auto colon = line.find(':');
+        if (colon == std::string::npos) continue;
+        std::string name = line.substr(0, colon);
+        std::transform(name.begin(), name.end(), name.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+        if (name == "location") {
+            const auto begin = line.find_first_not_of(" \t", colon + 1);
+            if (begin != std::string::npos) location = line.substr(begin);
+            break;
+        }
+    }
+    const std::string assetsPrefix = "https://release-assets.githubusercontent.com/";
+    if (++m_result->redirects > 5 || (location.rfind(assetsPrefix, 0) != 0 && location.rfind(releasePrefix, 0) != 0)) {
+        onError("Release download redirected to an unsupported location");
+        return true;
+    }
+
+    m_timer.cancel();
+    std::error_code ignored;
+    m_ssl.lowest_layer().close(ignored);
+    const auto next = std::make_shared<HttpSession>(m_service, location, m_agent,
+        m_enable_time_out_on_read_write, std::unordered_map<std::string, std::string>{}, m_timeout, m_isJson,
+        m_checkContentLength, m_result, m_callback);
+    m_result->session = next;
+    next->start();
+    return true;
+}
+
 void HttpSession::on_request_sent(const std::error_code& ec, size_t /*bytes_transferred*/)
 {
     if (ec) {
@@ -410,6 +466,7 @@ void HttpSession::on_request_sent(const std::error_code& ec, size_t /*bytes_tran
                 buffers_begin(m_response.data()),
                 buffers_begin(m_response.data()) + size);
             m_response.consume(size);
+            if (handleReleaseResponse(header)) return;
 
             // Check for Content-Length
             const size_t contentLengthPos = header.find("Content-Length: ");

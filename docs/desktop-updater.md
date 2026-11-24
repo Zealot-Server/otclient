@@ -63,3 +63,10 @@ No Windows 1.0.4, a atualização automática não foi validada e falhou no CI.
 O jogador deve usar o botão de download e instalar o novo pacote manualmente
 uma vez. O teste do pacote candidato verifica o atualizador para as versões
 seguintes.
+
+As versões 1.0.4 e 1.0.5 não acompanham o redirecionamento usado pelo
+GitHub para baixar pacotes; os jogadores devem instalar a versão 1.0.6
+manualmente pelo site uma vez. A partir dela, o cliente acompanha apenas
+redirecionamentos autorizados e mantém a verificação SHA-256 obrigatória.
+O teste de atualização com servidor local não valida o redirecionamento real
+do GitHub e deve ser complementado por um teste após a publicação.

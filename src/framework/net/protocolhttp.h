@@ -117,6 +117,7 @@ private:
     void on_connect(const std::error_code& ec);
 
     void on_request_sent(const std::error_code& ec, size_t bytes_transferred);
+    bool handleReleaseResponse(const std::string& header);
 
     void on_write();
     void on_read(const std::error_code& ec, size_t bytes_transferred);

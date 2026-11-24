@@ -46,9 +46,11 @@ function UIMessageBox.display(title, message, buttons, onEnterCallback, onEscape
     messageBox.holder = messageBox:getChildById('holder')
 
     currentSizes.height = currentSizes.height + 22
+    local buttonsWidth = 0
     for i = 1, #buttons do
         local button = messageBox:addButton(buttons[i].text, buttons[i].callback)
         button:addAnchor(AnchorTop, 'parent', AnchorTop)
+        buttonsWidth = buttonsWidth + button:getWidth() + (i > 1 and 10 or 0)
         if i == 1 then
             button:addAnchor(AnchorRight, 'parent', AnchorRight)
             currentSizes.height = currentSizes.height + button:getHeight() + 22
@@ -58,7 +60,7 @@ function UIMessageBox.display(title, message, buttons, onEnterCallback, onEscape
         end
     end
 
-    local finalWidth = math.min(staticSizes.width.max, math.max(staticSizes.width.min, currentSizes.width))
+    local finalWidth = math.min(staticSizes.width.max, math.max(staticSizes.width.min, currentSizes.width, buttonsWidth + horizontalPadding))
     messageBox:setWidth(finalWidth)
     messageBox.content:setWidth(finalWidth - horizontalPadding)
     messageBox.content:resizeToText()

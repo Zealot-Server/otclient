@@ -64,7 +64,7 @@ local function applyArchive(downloadPath, expectedSha256)
   progressWindow.status:setText(tr('Verifying download...'))
   local archiveVirtual = '/downloads/' .. downloadPath
   if g_resources.fileSha256(archiveVirtual):lower() ~= expectedSha256 then
-    return fail(tr('The downloaded package failed its SHA-256 check.'))
+    return fail(tr('The update could not be verified. Please try again.'))
   end
 
   local osName = g_app.getOs()
