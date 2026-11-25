@@ -11,7 +11,8 @@ function UIMessageBox.create(title, okCallback, cancelCallback)
     return calendar
 end
 
-function UIMessageBox.display(title, message, buttons, onEnterCallback, onEscapeCallback)
+function UIMessageBox.display(title, message, buttons, onEnterCallback, onEscapeCallback, options)
+    options = options or {}
     local rootWidth = rootWidget and rootWidget:getWidth() or 956
     local rootHeight = rootWidget and rootWidget:getHeight() or 656
     local staticSizes = {
@@ -34,11 +35,16 @@ function UIMessageBox.display(title, message, buttons, onEnterCallback, onEscape
     local messageBox = g_ui.createWidget('MessageBoxWindow', rootWidget)
     messageBox.title = messageBox:getChildById('title')
     messageBox.title:setText(title)
+    if options.highContrast then
+        messageBox.title:setOpacity(1)
+        messageBox.title:setColor("#ffffffff")
+    end
 
     messageBox.content = messageBox:getChildById('content')
     messageBox.content:setTextWrap(true)
     messageBox.content:setWidth(maxContentWidth)
     messageBox.content:setText(message)
+    if options.highContrast then messageBox.content:setColor("#ffffffff") end
     messageBox.content:resizeToText()
     currentSizes.width = currentSizes.width + math.min(maxContentWidth, math.max(messageBox.content:getWidth(), messageBox.content:getTextSize().width)) + horizontalPadding
     currentSizes.height = currentSizes.height + messageBox.content:getHeight() + 20
@@ -49,14 +55,26 @@ function UIMessageBox.display(title, message, buttons, onEnterCallback, onEscape
     local buttonsWidth = 0
     for i = 1, #buttons do
         local button = messageBox:addButton(buttons[i].text, buttons[i].callback)
-        button:addAnchor(AnchorTop, 'parent', AnchorTop)
-        buttonsWidth = buttonsWidth + button:getWidth() + (i > 1 and 10 or 0)
-        if i == 1 then
+        if options.highContrast then button:setColor("#ffffffff") end
+        if options.stackButtons then
+            buttonsWidth = math.max(buttonsWidth, button:getWidth())
+            button:addAnchor(AnchorLeft, 'parent', AnchorLeft)
             button:addAnchor(AnchorRight, 'parent', AnchorRight)
-            currentSizes.height = currentSizes.height + button:getHeight() + 22
+            if i == 1 then
+                button:addAnchor(AnchorTop, 'parent', AnchorTop)
+            else
+                button:addAnchor(AnchorTop, 'prev', AnchorBottom)
+                button:setMarginTop(8)
+            end
         else
-            button:addAnchor(AnchorRight, 'prev', AnchorLeft)
-            button:setMarginRight(10)
+            button:addAnchor(AnchorTop, 'parent', AnchorTop)
+            buttonsWidth = buttonsWidth + button:getWidth() + (i > 1 and 10 or 0)
+            if i == 1 then
+                button:addAnchor(AnchorRight, 'parent', AnchorRight)
+            else
+                button:addAnchor(AnchorRight, 'prev', AnchorLeft)
+                button:setMarginRight(10)
+            end
         end
     end
 
@@ -68,6 +86,9 @@ function UIMessageBox.display(title, message, buttons, onEnterCallback, onEscape
     currentSizes.height = messageBox.content:getHeight() + 20 + 22
     if #buttons > 0 then
         currentSizes.height = currentSizes.height + 42
+        if options.stackButtons then
+            currentSizes.height = currentSizes.height + (#buttons - 1) * 28
+        end
     end
     messageBox:setHeight(math.min(staticSizes.height.max, math.max(staticSizes.height.min, currentSizes.height)))
 
@@ -125,8 +146,8 @@ function displayCancelBox(title, message)
     return messageBox
 end
 
-function displayGeneralBox(title, message, buttons, onEnterCallback, onEscapeCallback)
-    return UIMessageBox.display(title, message, buttons, onEnterCallback, onEscapeCallback)
+function displayGeneralBox(title, message, buttons, onEnterCallback, onEscapeCallback, options)
+    return UIMessageBox.display(title, message, buttons, onEnterCallback, onEscapeCallback, options)
 end
 
 function displayGeneralSHOPBox(title, message, description, buttons, onEnterCallback, onEscapeCallback)

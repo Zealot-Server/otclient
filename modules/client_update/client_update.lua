@@ -157,19 +157,19 @@ function ClientUpdate.check()
     local message = tr('Zealot Client %s is available. Your version is %s.\nChoose how to update.',
       data.version, g_app.getVersion())
     updatePrompt = displayGeneralBox(tr('Client update available'), message, {
-      { text = tr('Download from website'), callback = function()
-          updatePrompt:destroy()
-          updatePrompt = nil
-          g_platform.openUrl(downloadPage)
-        end },
       { text = tr('Update automatically'), callback = function()
           updatePrompt:destroy()
           updatePrompt = nil
           ClientUpdate.install(package)
+        end },
+      { text = tr('Download from website'), callback = function()
+          updatePrompt:destroy()
+          updatePrompt = nil
+          g_platform.openUrl(downloadPage)
         end }
     }, nil, function()
       updatePrompt:destroy()
       updatePrompt = nil
-    end)
+    end, { stackButtons = true, highContrast = true })
   end, 10)
 end
