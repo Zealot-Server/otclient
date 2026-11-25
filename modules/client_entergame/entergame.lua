@@ -960,8 +960,12 @@ function EnterGame.setUniqueServer(host, port, protocol, windowWidth, windowHeig
     -- this is for the client_bottommenu module
     -- it needs images of outfits
     -- so it can display the boosted creature
-    g_game.setClientVersion(clientVersion)
-    g_game.setProtocolVersion(g_game.getClientProtocolVersion(clientVersion))
+    if clientVersion < 1281 or not modules.client_assets or
+        not modules.client_assets.isClientVersionInstalled or
+        modules.client_assets.isClientVersionInstalled(clientVersion) then
+        g_game.setClientVersion(clientVersion)
+        g_game.setProtocolVersion(g_game.getClientProtocolVersion(clientVersion))
+    end
 end
 
 function EnterGame.setServerInfo(message)

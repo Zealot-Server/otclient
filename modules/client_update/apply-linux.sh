@@ -26,6 +26,22 @@ new="$stage/$(tar -tzf "$archive" | head -1 | cut -d/ -f1)"
 [ -f "$new/init.lua" ] || exit 1
 [ -d "$target" ] && [ ! -L "$target" ] || exit 1
 
+# Preserve installed client data only when the new package has no version of
+# its own. The client checks completeness before using preserved files.
+for kind in things sounds; do
+  source_root="$target/data/$kind"
+  dest_root="$new/data/$kind"
+  [ -d "$source_root" ] && [ ! -L "$source_root" ] || continue
+  mkdir -p "$dest_root"
+  for source_version in "$source_root"/*; do
+    [ -d "$source_version" ] && [ ! -L "$source_version" ] || continue
+    version=${source_version##*/}
+    case "$version" in *[!0-9]*|'') continue ;; esac
+    [ ! -e "$dest_root/$version" ] && [ ! -L "$dest_root/$version" ] || continue
+    cp -R "$source_version" "$dest_root/$version"
+  done
+done
+
 backup="$target.previous.$(date +%s)"
 mv "$target" "$backup"
 if ! mv "$new" "$target"; then

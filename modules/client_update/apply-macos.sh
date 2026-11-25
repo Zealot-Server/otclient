@@ -30,6 +30,22 @@ new="$stage/Zealot Client.app"
 [ -x "$new/Contents/MacOS/Zealot Client" ] || exit 1
 [ -d "$app" ] && [ ! -L "$app" ] || exit 1
 
+# Preserve installed client data only when the new package has no version of
+# its own. The client checks completeness before using preserved files.
+for kind in things sounds; do
+  source_root="$app/Contents/Resources/data/$kind"
+  dest_root="$new/Contents/Resources/data/$kind"
+  [ -d "$source_root" ] && [ ! -L "$source_root" ] || continue
+  mkdir -p "$dest_root"
+  for source_version in "$source_root"/*; do
+    [ -d "$source_version" ] && [ ! -L "$source_version" ] || continue
+    version=${source_version##*/}
+    case "$version" in *[!0-9]*|'') continue ;; esac
+    [ ! -e "$dest_root/$version" ] && [ ! -L "$dest_root/$version" ] || continue
+    cp -R "$source_version" "$dest_root/$version"
+  done
+done
+
 backup="$app.previous.$(date +%s)"
 mv "$app" "$backup"
 if ! mv "$new" "$app"; then

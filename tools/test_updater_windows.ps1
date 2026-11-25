@@ -6,6 +6,11 @@ try {
     $target = Join-Path $root 'installed'
     New-Item -ItemType Directory -Path $target | Out-Null
     Set-Content -LiteralPath (Join-Path $target 'init.lua') -Value 'old'
+    foreach ($kind in @('things', 'sounds')) {
+        $dataDir = Join-Path $target "data/$kind/1511"
+        New-Item -ItemType Directory -Path $dataDir -Force | Out-Null
+        Set-Content -LiteralPath (Join-Path $dataDir 'fixture.dat') -Value $kind
+    }
 
     $source = Join-Path $root 'source'
     $package = Join-Path $source 'Zealot Client'
@@ -29,6 +34,12 @@ try {
 
     if ((Get-Content -LiteralPath (Join-Path $target 'init.lua') -Raw).Trim() -ne 'new') {
         throw 'Updated package was not installed.'
+    }
+    foreach ($kind in @('things', 'sounds')) {
+        $dataFile = Join-Path $target "data/$kind/1511/fixture.dat"
+        if (-not (Test-Path -LiteralPath $dataFile) -or (Get-Content -LiteralPath $dataFile -Raw).Trim() -ne $kind) {
+            throw "Installed $kind data was not preserved."
+        }
     }
     if (-not $global:zealotUpdaterStarted) { throw 'Updated executable was not launched.' }
     if (-not (Get-ChildItem -Path $root -Directory -Filter 'installed.previous.*')) {

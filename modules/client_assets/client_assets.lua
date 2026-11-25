@@ -365,7 +365,7 @@ local function hasModernClientFilesAtPath(basePath, installPath)
   local hasStaticData = false
   for _, entry in ipairs(catalog) do
     local entryType = entry.type
-    if entryType == 'appearances' or entryType == 'staticdata' or entryType == 'proficiencies' then
+    if entryType == 'appearances' or entryType == 'staticdata' or entryType == 'proficiencies' or entryType == 'sprite' then
       if installPath and not hasInstallCatalogEntryFile(basePath, entry) then
         return false
       elseif not installPath and not hasCatalogEntryFile(basePath, entry) then

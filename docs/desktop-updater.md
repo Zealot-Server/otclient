@@ -15,10 +15,19 @@ intacta. Falhas após o fechamento do jogo ficam em `updates/install.log` na
 pasta de dados do usuário. A atualização exige permissão de escrita na pasta
 onde o cliente foi instalado.
 
-O instalador não altera `data/things/<version>` nem `data/sounds/<version>`
-fora do novo pacote. Os assets baixados em tempo de execução continuam nos
-caminhos padrão e com a verificação SHA-256 estrita. A pasta de dados do usuário
-preserva configurações e assets já instalados.
+Os novos instaladores preservam diretórios de versões existentes em
+`data/things/<version>` e `data/sounds/<version>` quando o novo pacote não
+contém essa versão. Arquivos do pacote novo têm prioridade; a instalação
+anterior é mantida como backup. O cliente verifica catálogo, arquivos de
+appearances, staticdata, sprites e marcador antes de considerar os dados
+instalados e, se faltarem, oferece novamente o download. O download mantém a
+verificação SHA-256 estrita. A assinatura do bundle macOS pode ser invalidada
+por dados adicionados ao diretório Resources, como já ocorre na instalação dos
+assets; isso precisa ser considerado na distribuição assinada/notarizada.
+
+O instalador executado é o da versão antiga: a primeira atualização a partir de
+uma versão sem esta mudança não preserva automaticamente os dados. Esse caso
+exige reinstalar os assets ou recuperá-los do backup anterior.
 
 ## Publicação
 

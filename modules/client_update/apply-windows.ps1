@@ -32,6 +32,22 @@ try {
     if (-not (Test-Path -LiteralPath $target -PathType Container)) {
         throw 'The current installation was not found.'
     }
+    # Keep installed version directories only when absent from the package.
+    foreach ($kind in @('things', 'sounds')) {
+        $sourceRoot = Join-Path $target "data/$kind"
+        $destRoot = Join-Path $new "data/$kind"
+        if (-not (Test-Path -LiteralPath $sourceRoot -PathType Container)) { continue }
+        $rootItem = Get-Item -LiteralPath $sourceRoot -Force
+        if ($rootItem.Attributes -band [IO.FileAttributes]::ReparsePoint) { continue }
+        New-Item -ItemType Directory -Path $destRoot -Force | Out-Null
+        foreach ($dir in Get-ChildItem -LiteralPath $sourceRoot -Directory -Force) {
+            if ($dir.Name -notmatch '^[0-9]+$' -or ($dir.Attributes -band [IO.FileAttributes]::ReparsePoint)) { continue }
+            $destination = Join-Path $destRoot $dir.Name
+            if (-not (Test-Path -LiteralPath $destination)) {
+                Copy-Item -LiteralPath $dir.FullName -Destination $destination -Recurse
+            }
+        }
+    }
     $backup = $target + '.previous.' + [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
     Move-Item -LiteralPath $target -Destination $backup
     try {
