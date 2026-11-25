@@ -145,7 +145,7 @@ function ClientUpdate.install(package)
         progressWindow.status:setText(tr('Downloading update...'))
         progressWindow.progress:setPercent(percent)
       end
-    end)
+    end, 300)
 end
 
 function ClientUpdate.check()

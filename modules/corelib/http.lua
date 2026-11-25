@@ -57,11 +57,11 @@ function HTTP.postJSON(url, data, callback)
   return operation
 end
 
-function HTTP.download(url, file, callback, progressCallback)
+function HTTP.download(url, file, callback, progressCallback, timeout)
   if not g_http or not g_http.download then
     return error("HTTP.download is not supported")
   end
-  local operation = g_http.download(url, file, HTTP.timeout)
+  local operation = g_http.download(url, file, timeout or HTTP.timeout)
   HTTP.operations[operation] = {
     type = "download",
     url = url,

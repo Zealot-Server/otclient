@@ -82,11 +82,15 @@ function init()
   HTTP.download = function(url, file, callback, progress)
     if url == expectedUrl then
       record('package download started')
-      return originalDownload(localUrl, file, function(path, checksum, err)
+      local previousTimeout = HTTP.timeout
+      HTTP.timeout = 300 -- Published 1.0.4 uses the global timeout for downloads.
+      local operation = originalDownload(localUrl, file, function(path, checksum, err)
         record('package download result path=' .. tostring(path) .. ' error=' .. tostring(err))
         local ok, callbackError = pcall(callback, path, checksum, err)
         if not ok then record('download callback error: ' .. tostring(callbackError)) end
       end, progress)
+      HTTP.timeout = previousTimeout
+      return operation
     end
     return originalDownload(url, file, callback, progress)
   end
